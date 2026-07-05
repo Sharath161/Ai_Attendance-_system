@@ -1,0 +1,41 @@
+# Runtime data (PII — never commit)
+work/
+.env
+*.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# LaTeX build artefacts
+02_dissertation/*.aux
+02_dissertation/*.log
+02_dissertation/*.toc
+02_dissertation/*.lof
+02_dissertation/*.lot
+02_dissertation/*.out
+02_dissertation/*.synctex.gz
+02_dissertation/diagrams.aux
+02_dissertation/diagrams.log
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+01_notebook/.ipynb_checkpoints/
+
+# UI (excluded per project scope)
+03_ui/
+api/
+
+# Docker override
+*.override.yml
+
+# OS
+.DS_Store
+Thumbs.db
