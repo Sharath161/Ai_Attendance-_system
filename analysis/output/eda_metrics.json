@@ -1,0 +1,67 @@
+{
+  "generated_at": "2026-07-18 15:24 UTC",
+  "corpus": {
+    "identities": 46,
+    "images": 310,
+    "mean_imgs_per_identity": 6.739130434782608,
+    "real_identities": 6,
+    "real_images": 30,
+    "benchmark_identities": 40,
+    "benchmark_images": 280
+  },
+  "images": {
+    "distinct_resolutions": 2,
+    "mean_megapixels": 0.366658064516129,
+    "mean_kb": 18.85265877016129,
+    "mean_aspect": 1.3760645161290321,
+    "unreadable": 0
+  },
+  "detection": {
+    "total": 310,
+    "detected": 310,
+    "detection_rate": 1.0,
+    "mean_quality": 0.4456929032258064,
+    "mean_sharpness": 0.029090645161290323,
+    "mean_face_size": 0.31691483870967746,
+    "below_min_quality": 0
+  },
+  "embeddings": {
+    "count": 310,
+    "dim": 512,
+    "mean_l2": 1.0,
+    "max_l2_dev": 1.1920928955078125e-07
+  },
+  "separability": {
+    "threshold": 0.35,
+    "by_domain": {
+      "Real webcam enrolments": {
+        "intra_mean": 0.43435321065286797,
+        "inter_mean": 0.8172669212023417,
+        "d_prime": -2.251,
+        "impostor_above_threshold": 15,
+        "inter_pairs": 15
+      },
+      "Olivetti benchmark (grayscale 64px)": {
+        "intra_mean": 0.7162702157383873,
+        "inter_mean": 0.7751182136627344,
+        "d_prime": -0.595,
+        "impostor_above_threshold": 780,
+        "inter_pairs": 780
+      }
+    }
+  },
+  "database": {
+    "students": 3,
+    "student_embeddings": 21,
+    "image_jobs": 4,
+    "attendance_events": 4,
+    "esp32_devices": 0,
+    "fairness_metrics": 0,
+    "attendance_status": {
+      "recognized": 4
+    },
+    "job_status": {
+      "complete": 4
+    }
+  }
+}

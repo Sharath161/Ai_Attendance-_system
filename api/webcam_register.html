@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Face Registration</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #0f1117; color: #e0e0e0; min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .card {
+    background: #1a1d27; border-radius: 16px; padding: 36px 40px;
+    width: 520px; box-shadow: 0 8px 40px rgba(0,0,0,.5);
+  }
+  h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; color: #fff; }
+  .subtitle { font-size: 13px; color: #888; margin-bottom: 28px; }
+
+  /* step indicators */
+  .steps { display: flex; gap: 8px; margin-bottom: 28px; }
+  .step {
+    flex: 1; height: 4px; border-radius: 2px;
+    background: #2d3044; transition: background .3s;
+  }
+  .step.done { background: #4f6ef7; }
+  .step.active { background: #818cf8; }
+
+  /* form */
+  label { display: block; font-size: 12px; color: #888; margin-bottom: 5px; }
+  input {
+    width: 100%; padding: 10px 14px; border-radius: 8px;
+    border: 1px solid #2d3044; background: #0f1117; color: #fff;
+    font-size: 14px; margin-bottom: 16px; outline: none;
+    transition: border-color .2s;
+  }
+  input:focus { border-color: #4f6ef7; }
+
+  /* video */
+  .cam-wrap {
+    position: relative; border-radius: 12px; overflow: hidden;
+    background: #000; margin-bottom: 20px; display: none;
+  }
+  video { width: 100%; display: block; transform: scaleX(-1); }
+  canvas.overlay {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    pointer-events: none;
+  }
+
+  /* angle prompt */
+  .angle-box {
+    background: #0f1117; border-radius: 10px; padding: 16px 20px;
+    margin-bottom: 16px; display: none; text-align: center;
+  }
+  .angle-icon { font-size: 36px; margin-bottom: 6px; }
+  .angle-label { font-size: 15px; font-weight: 600; color: #fff; }
+  .angle-hint { font-size: 12px; color: #888; margin-top: 3px; }
+
+  /* countdown ring */
+  .countdown-wrap {
+    display: none; align-items: center; justify-content: center;
+    margin-bottom: 16px;
+  }
+  .countdown-ring { position: relative; width: 64px; height: 64px; }
+  .countdown-ring svg { transform: rotate(-90deg); }
+  .countdown-ring circle {
+    fill: none; stroke: #2d3044; stroke-width: 5;
+  }
+  .countdown-ring circle.progress {
+    stroke: #4f6ef7; stroke-dasharray: 163; stroke-dashoffset: 163;
+    transition: stroke-dashoffset .05s linear;
+  }
+  .countdown-num {
+    position: absolute; inset: 0; display: flex;
+    align-items: center; justify-content: center;
+    font-size: 22px; font-weight: 700; color: #fff;
+  }
+
+  /* thumbnails */
+  .thumbs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+  .thumb-slot {
+    width: 72px; height: 72px; border-radius: 8px;
+    border: 2px dashed #2d3044; background: #0f1117;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: #555; overflow: hidden;
+  }
+  .thumb-slot img { width: 100%; height: 100%; object-fit: cover; }
+  .thumb-slot.captured { border-color: #4f6ef7; border-style: solid; }
+
+  /* buttons */
+  .btn {
+    width: 100%; padding: 13px; border-radius: 10px; border: none;
+    font-size: 15px; font-weight: 600; cursor: pointer;
+    transition: opacity .2s; color: #fff;
+  }
+  .btn:disabled { opacity: .4; cursor: default; }
+  .btn-primary { background: #4f6ef7; }
+  .btn-primary:hover:not(:disabled) { background: #3b5bdb; }
+  .btn-success { background: #22c55e; }
+  .btn-success:hover:not(:disabled) { background: #16a34a; }
+
+  /* status */
+  .status {
+    border-radius: 8px; padding: 12px 16px;
+    font-size: 13px; margin-top: 16px; display: none;
+  }
+  .status.ok { background: #14532d; color: #86efac; }
+  .status.err { background: #7f1d1d; color: #fca5a5; }
+
+  /* progress bar (upload) */
+  .upload-bar { display: none; margin-top: 16px; }
+  .upload-bar-track {
+    background: #2d3044; border-radius: 4px; height: 6px; overflow: hidden;
+  }
+  .upload-bar-fill {
+    background: #4f6ef7; height: 100%; width: 0;
+    transition: width .3s; border-radius: 4px;
+  }
+  .upload-label { font-size: 12px; color: #888; margin-bottom-6px; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Face Registration</h1>
+  <p class="subtitle">KYC-style capture — we'll guide you through 5 angles</p>
+
+  <div class="steps" id="stepBar">
+    <div class="step active" id="s0"></div>
+    <div class="step" id="s1"></div>
+    <div class="step" id="s2"></div>
+  </div>
+
+  <!-- STEP 0: details -->
+  <div id="page0">
+    <label for="sid">Student / Person ID</label>
+    <input id="sid" placeholder="e.g. STU-001" autocomplete="off">
+    <label for="sname">Full Name</label>
+    <input id="sname" placeholder="e.g. Alex Johnson" autocomplete="off">
+    <label for="cls">Class / Group (optional)</label>
+    <input id="cls" placeholder="e.g. CS101">
+    <button class="btn btn-primary" id="btnStart" onclick="startCapture()">
+      Open Camera &amp; Start
+    </button>
+  </div>
+
+  <!-- STEP 1: capture -->
+  <div id="page1" style="display:none">
+    <div class="cam-wrap" id="camWrap">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas class="overlay" id="overlay"></canvas>
+    </div>
+
+    <div class="angle-box" id="angleBox">
+      <div class="angle-icon" id="angleIcon"></div>
+      <div class="angle-label" id="angleLabel"></div>
+      <div class="angle-hint" id="angleHint"></div>
+    </div>
+
+    <div class="countdown-wrap" id="cdWrap">
+      <div class="countdown-ring">
+        <svg viewBox="0 0 56 56" width="64" height="64">
+          <circle cx="28" cy="28" r="26"></circle>
+          <circle class="progress" id="cdArc" cx="28" cy="28" r="26"></circle>
+        </svg>
+        <div class="countdown-num" id="cdNum">3</div>
+      </div>
+    </div>
+
+    <div class="thumbs" id="thumbRow"></div>
+
+    <button class="btn btn-primary" id="btnCapture" onclick="triggerCapture()">
+      Capture This Angle
+    </button>
+  </div>
+
+  <!-- STEP 2: submit -->
+  <div id="page2" style="display:none">
+    <p style="font-size:14px;color:#aaa;margin-bottom:16px;">
+      All 5 angles captured. Review the thumbnails then submit.
+    </p>
+    <div class="thumbs" id="thumbRow2"></div>
+    <div class="upload-bar" id="uploadBar">
+      <div class="upload-bar-track"><div class="upload-bar-fill" id="uploadFill"></div></div>
+      <div class="upload-label" id="uploadLabel">Uploading…</div>
+    </div>
+    <button class="btn btn-success" id="btnSubmit" onclick="submitRegistration()">
+      Register Now
+    </button>
+    <div class="status" id="statusBox"></div>
+  </div>
+</div>
+
+<!-- hidden canvas for capture -->
+<canvas id="captureCanvas" style="display:none"></canvas>
+
+<script>
+const ANGLES = [
+  { icon: "😐", label: "Look straight ahead",  hint: "Face the camera directly, eyes level" },
+  { icon: "⬅️", label: "Turn slightly left",   hint: "Rotate your head ~20° to your left" },
+  { icon: "➡️", label: "Turn slightly right",  hint: "Rotate your head ~20° to your right" },
+  { icon: "⬆️", label: "Tilt slightly up",     hint: "Chin up a little" },
+  { icon: "⬇️", label: "Tilt slightly down",   hint: "Chin down a little" },
+];
+
+const API_BASE = window.location.origin;
+
+let stream = null;
+let currentAngle = 0;
+let captures = [];        // { blob, dataUrl }
+let countdownTimer = null;
+let countdownMs = 3000;
+let countdownStart = null;
+let counting = false;
+
+// ── utilities ──────────────────────────────────────────────────────────────
+
+function show(id)  { document.getElementById(id).style.display = ""; }
+function hide(id)  { document.getElementById(id).style.display = "none"; }
+function block(id) { document.getElementById(id).style.display = "block"; }
+function flex(id)  { document.getElementById(id).style.display = "flex"; }
+
+function setStep(n) {
+  for (let i = 0; i < 3; i++) {
+    const el = document.getElementById("s" + i);
+    el.className = "step" + (i < n ? " done" : i === n ? " active" : "");
+  }
+}
+
+// ── step 0 → 1 ─────────────────────────────────────────────────────────────
+
+async function startCapture() {
+  const sid = document.getElementById("sid").value.trim();
+  const name = document.getElementById("sname").value.trim();
+  if (!sid || !name) { alert("Student ID and Name are required."); return; }
+
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" },
+      audio: false,
+    });
+  } catch (e) {
+    alert("Camera access denied: " + e.message);
+    return;
+  }
+
+  hide("page0"); block("page1");
+  setStep(1);
+
+  const video = document.getElementById("video");
+  video.srcObject = stream;
+  block("camWrap");
+  block("angleBox");
+
+  buildThumbRow("thumbRow", 5);
+  showAngle(0);
+}
+
+// ── angle display ──────────────────────────────────────────────────────────
+
+function showAngle(idx) {
+  currentAngle = idx;
+  const a = ANGLES[idx];
+  document.getElementById("angleIcon").textContent = a.icon;
+  document.getElementById("angleLabel").textContent = a.label;
+  document.getElementById("angleHint").textContent = a.hint;
+  document.getElementById("btnCapture").textContent =
+    `Capture angle ${idx + 1} of ${ANGLES.length}`;
+  document.getElementById("btnCapture").disabled = false;
+  hide("cdWrap");
+}
+
+function buildThumbRow(rowId, n) {
+  const row = document.getElementById(rowId);
+  row.innerHTML = "";
+  for (let i = 0; i < n; i++) {
+    const d = document.createElement("div");
+    d.className = "thumb-slot";
+    d.id = rowId + "_thumb" + i;
+    d.textContent = (i + 1);
+    row.appendChild(d);
+  }
+}
+
+function setThumb(rowId, idx, dataUrl) {
+  const slot = document.getElementById(rowId + "_thumb" + idx);
+  slot.innerHTML = `<img src="${dataUrl}">`;
+  slot.classList.add("captured");
+}
+
+// ── countdown ──────────────────────────────────────────────────────────────
+
+function triggerCapture() {
+  if (counting) return;
+  counting = true;
+  document.getElementById("btnCapture").disabled = true;
+  flex("cdWrap");
+  countdownStart = performance.now();
+  requestAnimationFrame(tickCountdown);
+}
+
+function tickCountdown(now) {
+  const elapsed = now - countdownStart;
+  const remaining = Math.max(0, countdownMs - elapsed);
+  const frac = remaining / countdownMs;
+
+  const CIRC = 163;
+  document.getElementById("cdArc").style.strokeDashoffset = CIRC * frac;
+  document.getElementById("cdNum").textContent = Math.ceil(remaining / 1000);
+
+  if (remaining <= 0) {
+    snapFrame();
+    return;
+  }
+  requestAnimationFrame(tickCountdown);
+}
+
+// ── frame capture ──────────────────────────────────────────────────────────
+
+function snapFrame() {
+  const video = document.getElementById("video");
+  const canvas = document.getElementById("captureCanvas");
+  canvas.width  = video.videoWidth  || 640;
+  canvas.height = video.videoHeight || 480;
+  const ctx = canvas.getContext("2d");
+  // mirror to match displayed (mirrored) video
+  ctx.translate(canvas.width, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(video, 0, 0);
+
+  canvas.toBlob(blob => {
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+    captures.push({ blob, dataUrl });
+    setThumb("thumbRow", currentAngle, dataUrl);
+
+    counting = false;
+    hide("cdWrap");
+
+    if (captures.length < ANGLES.length) {
+      showAngle(currentAngle + 1);
+    } else {
+      finishCapture();
+    }
+  }, "image/jpeg", 0.9);
+}
+
+// ── step 1 → 2 ─────────────────────────────────────────────────────────────
+
+function finishCapture() {
+  // stop camera
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  hide("page1"); block("page2");
+  setStep(2);
+  buildThumbRow("thumbRow2", captures.length);
+  captures.forEach((c, i) => setThumb("thumbRow2", i, c.dataUrl));
+}
+
+// ── submit ──────────────────────────────────────────────────────────────────
+
+async function submitRegistration() {
+  const sid   = document.getElementById("sid").value.trim();
+  const sname = document.getElementById("sname").value.trim();
+  const cls   = document.getElementById("cls").value.trim();
+
+  const form = new FormData();
+  form.append("student_id", sid);
+  form.append("name", sname);
+  if (cls) form.append("class_id", cls);
+  captures.forEach((c, i) =>
+    form.append("images", c.blob, `angle_${i + 1}.jpg`)
+  );
+
+  document.getElementById("btnSubmit").disabled = true;
+  block("uploadBar");
+  document.getElementById("uploadLabel").textContent = "Uploading…";
+
+  // animate bar while uploading (XHR for progress)
+  const xhr = new XMLHttpRequest();
+  xhr.open("POST", `${API_BASE}/students/register`);
+
+  xhr.upload.onprogress = e => {
+    if (e.lengthComputable) {
+      const pct = Math.round((e.loaded / e.total) * 100);
+      document.getElementById("uploadFill").style.width = pct + "%";
+      document.getElementById("uploadLabel").textContent = `Uploading… ${pct}%`;
+    }
+  };
+
+  xhr.onload = async () => {
+    document.getElementById("uploadFill").style.width = "100%";
+    const box = document.getElementById("statusBox");
+    block("statusBox");
+    if (xhr.status === 202) {
+      box.className = "status ok";
+      box.innerHTML = `✓ Images saved — building face embeddings…`;
+
+      await fetch(`${API_BASE}/students/${encodeURIComponent(sid)}/process`, { method: "POST" });
+
+      let attempts = 0;
+      const poll = setInterval(async () => {
+        attempts++;
+        try {
+          const r = await fetch(`${API_BASE}/students/${encodeURIComponent(sid)}/status`);
+          const d = await r.json();
+          if (d.status === "active") {
+            clearInterval(poll);
+            box.innerHTML =
+              `✅ <strong>${sname}</strong> registered with ${d.active_embeddings} face embeddings. ` +
+              `<a href="/checkin" style="color:#818cf8">Check in now →</a>`;
+          } else if (d.status === "embedding_failed") {
+            clearInterval(poll);
+            box.className = "status err";
+            box.textContent = "Embedding failed — ensure your face is clearly visible in all photos.";
+          } else if (attempts > 30) {
+            clearInterval(poll);
+            box.innerHTML = `Images saved. Embeddings still processing — check the dashboard shortly.`;
+          }
+        } catch { clearInterval(poll); }
+      }, 1500);
+    } else {
+      box.className = "status err";
+      box.textContent = `Error ${xhr.status}: ${xhr.responseText}`;
+      document.getElementById("btnSubmit").disabled = false;
+    }
+  };
+  xhr.onerror = () => {
+    const box = document.getElementById("statusBox");
+    block("statusBox");
+    box.className = "status err";
+    box.textContent = "Network error — is the API running on port 8000?";
+    document.getElementById("btnSubmit").disabled = false;
+  };
+
+  xhr.send(form);
+}
+</script>
+</body>
+</html>

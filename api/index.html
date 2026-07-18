@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Face Attendance</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0a0b10;color:#e0e0e0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+  header{text-align:center;margin-bottom:56px}
+  .logo{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#4f6ef7,#818cf8);display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 16px}
+  h1{font-size:28px;font-weight:700;color:#fff;margin-bottom:6px}
+  .tagline{font-size:15px;color:#666}
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:20px;width:100%;max-width:640px;margin-bottom:40px}
+  .card{background:#13151e;border:1px solid #1e2135;border-radius:18px;padding:36px 30px;text-align:center;text-decoration:none;color:inherit;transition:border-color .2s,transform .15s}
+  .card:hover{border-color:#4f6ef7;transform:translateY(-3px)}
+  .card-icon{font-size:40px;margin-bottom:16px}
+  .card-title{font-size:18px;font-weight:600;color:#fff;margin-bottom:8px}
+  .card-desc{font-size:13px;color:#666;line-height:1.5}
+  .card-btn{display:inline-block;margin-top:20px;padding:10px 24px;border-radius:10px;font-size:14px;font-weight:600;color:#fff}
+  .card.register .card-btn{background:#4f6ef7}
+  .card.checkin  .card-btn{background:#22c55e}
+  .footer{display:flex;gap:24px;align-items:center}
+  .footer a{font-size:13px;color:#444;text-decoration:none;transition:color .2s}
+  .footer a:hover{color:#aaa}
+  .sep{color:#333}
+  .status-dot{width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block;margin-right:5px}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">🎯</div>
+  <h1>AI Face Attendance</h1>
+  <p class="tagline">Fast, private, and accurate — powered by on-device face recognition</p>
+</header>
+
+<div class="cards" style="grid-template-columns:1fr 1fr 1fr 1fr;max-width:900px">
+  <a class="card register" href="/register/webcam">
+    <div class="card-icon">📸</div>
+    <div class="card-title">Register</div>
+    <div class="card-desc">Enroll your face in 60 seconds with guided 5-angle capture.</div>
+    <span class="card-btn">Register →</span>
+  </a>
+  <a class="card checkin" href="/checkin">
+    <div class="card-icon">✅</div>
+    <div class="card-title">Face Kiosk</div>
+    <div class="card-desc">Simulate the ESP32 check-in kiosk with your webcam.</div>
+    <span class="card-btn" style="background:#22c55e">Check In →</span>
+  </a>
+  <a class="card" href="/student" style="border-color:#1e2135">
+    <div class="card-icon">🎓</div>
+    <div class="card-title">Student Portal</div>
+    <div class="card-desc">View attendance by module, sessions history, and at-risk status.</div>
+    <span class="card-btn" style="background:#7048e8">View Attendance →</span>
+  </a>
+  <a class="card" href="/admin" style="border-color:#1e2135">
+    <div class="card-icon">🛠️</div>
+    <div class="card-title">Admin Dashboard</div>
+    <div class="card-desc">KPIs, manual override, device management, and fairness metrics.</div>
+    <span class="card-btn" style="background:#e67700">Admin Panel →</span>
+  </a>
+</div>
+
+<footer class="footer">
+  <span><span class="status-dot" id="dot"></span><span id="api-status">Checking API…</span></span>
+  <span class="sep">|</span>
+  <a href="/docs" target="_blank">API Docs ↗</a>
+</footer>
+
+<script>
+(async () => {
+  try {
+    const r = await fetch('/health');
+    const d = await r.json();
+    const dot = document.getElementById('dot');
+    const lbl = document.getElementById('api-status');
+    if (d.face_model_loaded) {
+      lbl.textContent = 'System ready';
+      dot.style.background = '#22c55e';
+    } else {
+      lbl.textContent = 'API up — face model not loaded';
+      dot.style.background = '#f59e0b';
+    }
+  } catch {
+    document.getElementById('api-status').textContent = 'API offline';
+    document.getElementById('dot').style.background = '#ef4444';
+  }
+})();
+</script>
+</body>
+</html>

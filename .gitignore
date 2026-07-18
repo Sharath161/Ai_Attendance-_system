@@ -1,0 +1,66 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+env/
+.Python
+
+# ── Environment ───────────────────────────────────────────────────────────────
+.env
+*.env
+!.env.example
+
+# ── Runtime data — biometric PII / secrets (NEVER commit) ─────────────────────
+# NOTE: git only treats '#' as a comment at the start of a line, so keep
+# every ignore pattern on its own line with no trailing inline comment.
+work/spool/
+# real face photos of real people (biometric PII):
+work/registrations/
+# diagnostic webcam snapshots (real photos):
+work/diag/
+work/logs/
+# 51 MB ONNX weights — re-fetch with: python -m worker.download_models
+work/models/
+# personal records + face-embedding templates:
+work/attendance.db
+work/attendance.db-shm
+work/attendance.db-wal
+
+# ── LaTeX build artefacts ─────────────────────────────────────────────────────
+dissertation/*.aux
+dissertation/*.log
+dissertation/*.toc
+dissertation/*.lof
+dissertation/*.lot
+dissertation/*.out
+dissertation/*.synctex.gz
+dissertation/*.fls
+dissertation/*.fdb_latexmk
+
+# ── Docker ────────────────────────────────────────────────────────────────────
+*.override.yml
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+Desktop.ini
+
+# ── IDE ───────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*.orig
+
+# ── Test / coverage ───────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
