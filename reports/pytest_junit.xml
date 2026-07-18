@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="3" tests="5" time="10.140" timestamp="2026-07-18T16:27:23.285654+01:00" hostname="SHARATH"><testcase classname="tests.fairness.test_yolov8_fairface.TestOlivettiOverall" name="test_overall_f1" time="8.797" /><testcase classname="tests.fairness.test_yolov8_fairface.TestOlivettiOverall" name="test_zero_cross_person_matches" time="0.001"><failure message="AssertionError: Cross-person false-positive rate 17.5% exceeds 5%. Threshold may be too low.&#10;assert 0.175 &lt;= 0.05">self = &lt;tests.fairness.test_yolov8_fairface.TestOlivettiOverall object at 0x00000181929E6850&gt;
+olivetti_results = {'tp': 99, 'fp': 21, 'fn': 0, 'precision': 0.825, ...}
+
+    def test_zero_cross_person_matches(self, olivetti_results):
+        # False positives (matched but wrong person) should be near zero
+        fp = olivetti_results["fp"]
+        total = olivetti_results["tp"] + olivetti_results["fp"] + olivetti_results["fn"]
+        fp_rate = fp / total if total else 0.0
+&gt;       assert fp_rate &lt;= 0.05, (
+            f"Cross-person false-positive rate {fp_rate:.1%} exceeds 5%. "
+            "Threshold may be too low."
+        )
+E       AssertionError: Cross-person false-positive rate 17.5% exceeds 5%. Threshold may be too low.
+E       assert 0.175 &lt;= 0.05
+
+tests\fairness\test_yolov8_fairface.py:145: AssertionError</failure></testcase><testcase classname="tests.fairness.test_yolov8_fairface.TestFairFaceEquity" name="test_per_race_detection_rate" time="0.000"><skipped type="pytest.skip" message="FairFace dataset not found at work\fairface. Download from https://github.com/joojs/fairface">C:\Users\ranga\OneDrive\Documents\Desertation\develop-an-efficient-and-scalable-backend\tests\fairness\test_yolov8_fairface.py:181: FairFace dataset not found at work\fairface. Download from https://github.com/joojs/fairface</skipped></testcase><testcase classname="tests.fairness.test_yolov8_fairface.TestFairFaceEquity" name="test_per_race_f1" time="0.000"><skipped type="pytest.skip" message="FairFace dataset not found at work\fairface. Download from https://github.com/joojs/fairface">C:\Users\ranga\OneDrive\Documents\Desertation\develop-an-efficient-and-scalable-backend\tests\fairness\test_yolov8_fairface.py:188: FairFace dataset not found at work\fairface. Download from https://github.com/joojs/fairface</skipped></testcase><testcase classname="tests.fairness.test_yolov8_fairface.TestFairFaceEquity" name="test_f1_fairness_gap" time="0.000"><skipped type="pytest.skip" message="FairFace dataset not found at work\fairface. Download from https://github.com/joojs/fairface">C:\Users\ranga\OneDrive\Documents\Desertation\develop-an-efficient-and-scalable-backend\tests\fairness\test_yolov8_fairface.py:199: FairFace dataset not found at work\fairface. Download from https://github.com/joojs/fairface</skipped></testcase></testsuite></testsuites>

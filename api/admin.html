@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Attendance — Admin Dashboard</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --blue:#3b5bdb;--blue-mid:#4c6ef5;--blue-light:#e8ecff;
+  --green:#2f9e44;--green-bg:#ebfbee;
+  --red:#c92a2a;--red-bg:#fff5f5;
+  --orange:#e67700;--orange-bg:#fff9db;
+  --purple:#7048e8;--purple-bg:#f3f0ff;
+  --teal:#0c8599;
+  --gray:#f8f9fa;--border:#dee2e6;--text:#212529;--text-dim:#868e96;
+  --header-h:56px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:#f1f3f5;color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+
+/* ── Header ── */
+.header{background:var(--blue);color:#fff;height:var(--header-h);display:flex;align-items:center;justify-content:space-between;padding:0 28px;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+.header-left{display:flex;align-items:center;gap:16px}
+.header-title{font-size:17px;font-weight:700}
+.header-badge{background:rgba(255,255,255,.2);border-radius:4px;padding:2px 10px;font-size:11px;font-weight:600;letter-spacing:.05em}
+.header-right{display:flex;align-items:center;gap:12px;font-size:13px}
+.header-right a{color:rgba(255,255,255,.8);text-decoration:none;font-size:12px;border:1px solid rgba(255,255,255,.3);padding:4px 10px;border-radius:5px}
+.header-right a:hover{background:rgba(255,255,255,.1)}
+
+/* ── Tab navigation ── */
+.tab-nav{background:#fff;border-bottom:1px solid var(--border);display:flex;padding:0 24px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.tab-btn{padding:14px 18px;font-size:13px;font-weight:500;color:var(--text-dim);border:none;background:none;cursor:pointer;border-bottom:3px solid transparent;transition:all .15s;white-space:nowrap}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{color:var(--blue);border-bottom-color:var(--blue);font-weight:600}
+
+/* ── Content area ── */
+.content{flex:1;padding:24px 28px;overflow-y:auto}
+.tab-pane{display:none}
+.tab-pane.active{display:block}
+
+/* ── KPI Cards ── */
+.cards{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:22px}
+.card{background:#fff;border-radius:10px;padding:16px 18px;border:1px solid var(--border);box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.card-val{font-size:26px;font-weight:800;margin-bottom:3px}
+.card-sub{font-size:11px;color:var(--text-dim);margin-bottom:6px}
+.card-lbl{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em}
+.card-trend{font-size:11px;margin-top:4px}
+.card.green .card-val{color:var(--green)}
+.card.blue  .card-val{color:var(--blue)}
+.card.red   .card-val{color:var(--red)}
+.card.orange .card-val{color:var(--orange)}
+.card.purple .card-val{color:var(--purple)}
+
+/* ── Section heading ── */
+.section-hd{font-size:14px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+.section-hd span{font-size:12px;font-weight:400;color:var(--text-dim)}
+.refresh-btn{background:none;border:1px solid var(--border);border-radius:5px;padding:4px 10px;font-size:12px;cursor:pointer;color:var(--text-dim)}
+.refresh-btn:hover{background:var(--gray)}
+
+/* ── Tables ── */
+.table-wrap{background:#fff;border-radius:10px;border:1px solid var(--border);overflow:hidden;margin-bottom:22px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead tr{background:var(--blue);color:#fff}
+thead th{padding:10px 14px;text-align:left;font-size:12px;font-weight:600;letter-spacing:.03em}
+tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
+tbody tr:last-child{border:none}
+tbody td{padding:9px 14px;vertical-align:middle}
+tbody tr:hover{background:#f8f9ff}
+tr.row-ok{background:#f4fbf5}
+tr.row-ok:hover{background:#eaf7ec}
+tr.row-risk{background:#fff8f8}
+tr.row-risk:hover{background:#fceaea}
+
+/* ── Badges ── */
+.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.02em}
+.badge.ok,.badge.recognized{background:#d3f9d8;color:var(--green)}
+.badge.risk,.badge.unknown{background:#ffe3e3;color:var(--red)}
+.badge.low_confidence{background:#fff3bf;color:var(--orange)}
+.badge.manual{background:var(--purple-bg);color:var(--purple)}
+.badge.active{background:#d3f9d8;color:var(--green)}
+.badge.offline{background:#f1f3f5;color:var(--text-dim)}
+.badge.fault{background:#ffe3e3;color:var(--red)}
+.badge.pending{background:#fff3bf;color:var(--orange)}
+
+/* ── Two-column layout ── */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:22px}
+
+/* ── Manual override form ── */
+.form-card{background:#fff;border-radius:10px;border:1px solid var(--border);padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.form-card.orange-tint{border-left:4px solid var(--orange)}
+.form-title{font-size:14px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.form-row{margin-bottom:13px}
+.form-row label{display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:var(--text)}
+.form-row input,.form-row select,.form-row textarea{width:100%;border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-size:13px;outline:none;font-family:inherit;background:#fff;transition:border-color .15s}
+.form-row input:focus,.form-row select:focus,.form-row textarea:focus{border-color:var(--blue-mid)}
+.form-row textarea{resize:vertical;min-height:60px}
+.form-hint{font-size:11px;color:var(--text-dim);margin-top:3px}
+.form-actions{display:flex;gap:8px;margin-top:16px}
+.btn{padding:8px 18px;border-radius:6px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:opacity .15s}
+.btn:hover{opacity:.88}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-orange{background:var(--orange);color:#fff}
+.btn-outline{background:#fff;border:1px solid var(--border);color:var(--text)}
+.btn-sm{padding:5px 12px;font-size:12px}
+
+/* ── Fairness bars ── */
+.fairness-card{background:#fff;border-radius:10px;border:1px solid var(--border);padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.fairness-title{font-size:14px;font-weight:700;margin-bottom:4px}
+.fairness-sub{font-size:12px;color:var(--text-dim);margin-bottom:16px}
+.fairness-target{font-size:11px;color:var(--text-dim);margin-bottom:12px;padding:6px 10px;background:#f8f9fa;border-radius:6px;border-left:3px solid var(--blue)}
+.bar-row{margin-bottom:12px}
+.bar-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;font-size:12px}
+.bar-name{color:var(--text);font-weight:500}
+.bar-pct{font-weight:700;font-size:12px}
+.bar-track{height:14px;background:#e9ecef;border-radius:99px;overflow:hidden;position:relative}
+.bar-fill{height:100%;border-radius:99px;transition:width .5s ease;position:relative}
+.bar-fill.good{background:var(--green)}
+.bar-fill.warn{background:var(--orange)}
+.bar-fill.poor{background:var(--red)}
+.bar-fill.target-line::after{content:'';position:absolute;right:-1px;top:0;height:100%;width:2px;background:rgba(0,0,0,.3)}
+.bar-count{font-size:10px;color:var(--text-dim);margin-top:2px}
+
+/* ── Server health ── */
+.health-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;background:#fff;border-radius:10px;border:1px solid var(--border);padding:16px 20px;margin-bottom:22px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.health-item{text-align:center}
+.health-val{font-size:18px;font-weight:700;margin-bottom:2px}
+.health-lbl{font-size:11px;color:var(--text-dim)}
+
+/* ── Filters ── */
+.filter-bar{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+.filter-bar input,.filter-bar select{border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:12px;background:#fff;outline:none}
+.filter-bar input:focus,.filter-bar select:focus{border-color:var(--blue-mid)}
+
+/* ── Device status dot ── */
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+.dot.active{background:var(--green)}
+.dot.offline{background:var(--text-dim)}
+.dot.fault{background:var(--red)}
+
+/* ── States ── */
+.state-msg{padding:32px;text-align:center;color:var(--text-dim);font-size:13px}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.toast{position:fixed;bottom:20px;right:20px;background:#212529;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+.toast.ok{background:var(--green)}
+.toast.err{background:var(--red)}
+
+/* ── Pipeline stage rows ── */
+.stage-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;font-size:13px;margin-bottom:6px;background:var(--gray);border:1px solid var(--border)}
+.stage-row.done{background:var(--green-bg);border-color:#b2f2bb}
+.stage-row.running{background:var(--blue-light);border-color:#c5d0f0}
+.stage-icon{font-size:15px;flex-shrink:0}
+
+/* ── Opt stat mini-cards ── */
+.opt-stat{background:#fff;border:1px solid var(--border);border-radius:8px;padding:10px 14px}
+.opt-stat-val{font-size:22px;font-weight:800;color:var(--blue)}
+.opt-stat-lbl{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em}
+
+/* ── Footer ── */
+.footer{background:#fff;border-top:1px solid var(--border);padding:9px 28px;font-size:11px;color:var(--text-dim);flex-shrink:0;display:flex;justify-content:space-between}
+</style>
+</head>
+<body>
+
+<!-- ── Header ───────────────────────────────────────────────────────────────── -->
+<div class="header">
+  <div class="header-left">
+    <div class="header-title">AI Attendance System — Admin</div>
+    <div class="header-badge">ADMIN</div>
+  </div>
+  <div class="header-right">
+    <span id="headerClock"></span>
+    <a href="/student">Student View</a>
+    <a href="/checkin">Face Kiosk</a>
+  </div>
+</div>
+
+<!-- ── Tab navigation ───────────────────────────────────────────────────────── -->
+<div class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('overview')">📊 Overview</button>
+  <button class="tab-btn" onclick="switchTab('log')">📋 Attendance Log</button>
+  <button class="tab-btn" onclick="switchTab('override')">✏️ Manual Override</button>
+  <button class="tab-btn" onclick="switchTab('devices')">📡 Devices</button>
+  <button class="tab-btn" onclick="switchTab('fairness')">⚖️ Fairness KPIs</button>
+  <button class="tab-btn" onclick="switchTab('optimize')">🧠 Hypertune</button>
+</div>
+
+<!-- ── Content ──────────────────────────────────────────────────────────────── -->
+<div class="content">
+
+  <!-- ═══ OVERVIEW ═══ -->
+  <div id="tab-overview" class="tab-pane active">
+    <!-- KPI Cards -->
+    <div class="cards" id="kpiCards">
+      <div class="card blue"><div class="card-val" id="kpi-accuracy">…</div><div class="card-lbl">Recognition Accuracy</div></div>
+      <div class="card green"><div class="card-val" id="kpi-events">…</div><div class="card-lbl">Total Events</div></div>
+      <div class="card purple"><div class="card-val" id="kpi-today">…</div><div class="card-lbl">Students Today</div></div>
+      <div class="card orange"><div class="card-val" id="kpi-queue">…</div><div class="card-lbl">Queue Pending</div></div>
+      <div class="card green"><div class="card-val" id="kpi-devices">…</div><div class="card-lbl">Active Devices</div></div>
+    </div>
+
+    <!-- Server health row -->
+    <div class="health-row" id="healthRow">
+      <div class="health-item"><div class="health-val" id="h-model" style="color:var(--green)">—</div><div class="health-lbl">Face Model</div></div>
+      <div class="health-item"><div class="health-val" id="h-pending">—</div><div class="health-lbl">Pending Jobs</div></div>
+      <div class="health-item"><div class="health-val" id="h-completed">—</div><div class="health-lbl">Completed Jobs</div></div>
+      <div class="health-item"><div class="health-val" id="h-failed">—</div><div class="health-lbl">Failed Jobs</div></div>
+    </div>
+
+    <!-- Live Attendance Log (last 20) -->
+    <div class="section-hd">Live Attendance Log <span>last 20 events</span>
+      <button class="refresh-btn" onclick="loadOverview()">↻ Refresh</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Time</th><th>Student</th><th>Module / Class</th><th>Camera</th><th>Confidence</th><th>Status</th>
+        </tr></thead>
+        <tbody id="overviewTableBody"><tr><td colspan="6" class="state-msg"><span class="spinner"></span>Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══ ATTENDANCE LOG ═══ -->
+  <div id="tab-log" class="tab-pane">
+    <div class="filter-bar">
+      <input id="filter-class" placeholder="Module / Class ID" oninput="renderLog()" style="width:180px">
+      <input id="filter-date" type="date" onchange="renderLog()">
+      <select id="filter-status" onchange="renderLog()">
+        <option value="">All statuses</option>
+        <option value="recognized">Recognized</option>
+        <option value="unknown">Unknown</option>
+        <option value="low_confidence">Low Confidence</option>
+        <option value="manual">Manual</option>
+      </select>
+      <button class="btn btn-outline btn-sm" onclick="loadLog()">↻ Reload</button>
+      <span id="log-count" style="font-size:12px;color:var(--text-dim)"></span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Date / Time</th><th>Student ID</th><th>Module</th><th>Camera</th><th>Confidence</th><th>Method</th><th>Status</th>
+        </tr></thead>
+        <tbody id="logTableBody"><tr><td colspan="7" class="state-msg"><span class="spinner"></span>Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══ MANUAL OVERRIDE ═══ -->
+  <div id="tab-override" class="tab-pane">
+    <div class="two-col" style="align-items:start">
+      <!-- Form -->
+      <div class="form-card orange-tint">
+        <div class="form-title">✏️ Manual Attendance Override
+          <span style="font-size:11px;font-weight:400;color:var(--text-dim)">Use only when face recognition fails</span>
+        </div>
+
+        <div class="form-row">
+          <label>Student</label>
+          <select id="mo-student">
+            <option value="">Select student…</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Module / Class ID</label>
+          <input id="mo-class" placeholder="e.g. CS301" list="classSuggestions">
+          <datalist id="classSuggestions"></datalist>
+        </div>
+        <div class="form-row">
+          <label>Date &amp; Time</label>
+          <input type="datetime-local" id="mo-datetime">
+        </div>
+        <div class="form-row">
+          <label>Status</label>
+          <select id="mo-status">
+            <option value="recognized">Present (Recognized)</option>
+            <option value="unknown">Absent / Unknown</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Reason / Notes</label>
+          <textarea id="mo-notes" placeholder="e.g. Student had camera failure, verified by lecturer…"></textarea>
+          <div class="form-hint">This note will be stored in the audit log.</div>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-orange" onclick="submitOverride()">Submit Override</button>
+          <button class="btn btn-outline" onclick="clearOverrideForm()">Clear</button>
+        </div>
+        <div id="overrideMsg" style="margin-top:12px;font-size:13px"></div>
+      </div>
+
+      <!-- Recent overrides -->
+      <div>
+        <div class="section-hd">Recent Manual Overrides</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Time</th><th>Student</th><th>Module</th><th>Status</th></tr></thead>
+            <tbody id="overrideLogBody"><tr><td colspan="4" class="state-msg">No overrides yet.</td></tr></tbody>
+          </table>
+        </div>
+
+        <div class="fairness-card" style="margin-top:0">
+          <div class="fairness-title">⚠️ System Alerts</div>
+          <div id="alertList" style="font-size:13px;color:var(--text-dim);padding:8px 0">Checking…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ DEVICES ═══ -->
+  <div id="tab-devices" class="tab-pane">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div class="section-hd" style="margin:0">Registered ESP32-CAM Devices</div>
+      <button class="btn btn-primary btn-sm" onclick="showRegisterDevice()">+ Register Device</button>
+    </div>
+
+    <!-- Register device inline form (hidden by default) -->
+    <div id="registerDeviceForm" style="display:none;margin-bottom:16px">
+      <div class="form-card">
+        <div class="form-title">Register New Device</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+          <div class="form-row"><label>Device Name</label><input id="dev-name" placeholder="e.g. Lab-A Entrance"></div>
+          <div class="form-row"><label>Room Label</label><input id="dev-room" placeholder="e.g. Room 101"></div>
+          <div class="form-row"><label>MAC Address (optional)</label><input id="dev-mac" placeholder="AA:BB:CC:DD:EE:FF"></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="registerDevice()">Register</button>
+          <button class="btn btn-outline" onclick="document.getElementById('registerDeviceForm').style.display='none'">Cancel</button>
+        </div>
+        <div id="devRegMsg" style="margin-top:10px;font-size:13px"></div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Device Name</th><th>Room</th><th>MAC Address</th><th>Firmware</th><th>Last Seen</th><th>Status</th>
+        </tr></thead>
+        <tbody id="devTableBody"><tr><td colspan="6" class="state-msg"><span class="spinner"></span>Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══ FAIRNESS KPIs ═══ -->
+  <div id="tab-fairness" class="tab-pane">
+    <div class="two-col" style="align-items:start">
+      <!-- Accuracy by demographic -->
+      <div class="fairness-card">
+        <div class="fairness-title">Recognition Accuracy by Demographic Group</div>
+        <div class="fairness-sub">Per-group recognition rate from live attendance events</div>
+        <div class="fairness-target">
+          🎯 Target: F1 ≥ 0.75 per group &nbsp;|&nbsp; Max inter-group gap ≤ 15 pp
+        </div>
+        <div id="fairnessBars"><div class="state-msg"><span class="spinner"></span>Loading…</div></div>
+        <div id="fairnessGap" style="margin-top:14px;font-size:12px;padding:8px 12px;border-radius:6px;background:#f8f9fa"></div>
+      </div>
+
+      <!-- Threshold settings -->
+      <div>
+        <div class="fairness-card" style="margin-bottom:16px">
+          <div class="fairness-title">Per-Group Confidence Thresholds</div>
+          <div class="fairness-sub">Lower threshold → fewer false negatives for that group</div>
+          <div id="thresholdRows" style="font-size:13px">
+            <table style="width:100%;border-collapse:collapse">
+              <thead><tr style="border-bottom:1px solid var(--border)">
+                <th style="text-align:left;padding:6px 8px;font-size:11px;color:var(--text-dim)">Group</th>
+                <th style="text-align:left;padding:6px 8px;font-size:11px;color:var(--text-dim)">Threshold</th>
+                <th style="text-align:left;padding:6px 8px;font-size:11px;color:var(--text-dim)">Events</th>
+              </tr></thead>
+              <tbody id="thresholdBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="fairness-card">
+          <div class="fairness-title">Dissertation Note</div>
+          <div style="font-size:12px;color:var(--text-dim);line-height:1.6">
+            <p style="margin-bottom:8px">This system implements <strong>per-demographic threshold calibration</strong> to address
+            known biases in face recognition models (e.g., NIST FRVT findings on darker skin tones).</p>
+            <p style="margin-bottom:8px">FairFace-labelled validation images are used to measure per-group F1.
+            Thresholds are tuned so no group falls below 0.75 F1 and the inter-group gap stays under 15 pp.</p>
+            <p>Demographic labels are stored in <code>StudentEmbedding.demographic_group</code> and never
+            used for any purpose other than fairness monitoring.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Event counts by demographic -->
+    <div class="section-hd" style="margin-top:4px">Event Volume by Demographic Group <span>live attendance data</span></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Demographic Group</th><th>Total Events</th><th>Recognized</th><th>Unknown</th><th>Low Confidence</th><th>Recognition Rate</th>
+        </tr></thead>
+        <tbody id="demoTableBody"><tr><td colspan="6" class="state-msg">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══ HYPERTUNE ═══ -->
+  <div id="tab-optimize" class="tab-pane">
+
+    <!-- Explanation banner -->
+    <div style="background:var(--blue-light);border:1px solid #c5d0f0;border-radius:10px;padding:16px 20px;margin-bottom:20px;font-size:13px;line-height:1.6">
+      <strong style="font-size:14px">🧠 Embedding Optimizer — 3-Stage Hypertuning Pipeline</strong><br>
+      <span style="color:var(--text-dim)">
+        <strong>Stage 1 — Quality Scoring:</strong> Each registered face image is scored on sharpness (Laplacian variance) + YuNet detection confidence + face size. Low-quality images are down-weighted.<br>
+        <strong>Stage 2 — Prototype Aggregation:</strong> All quality-weighted embeddings per student are collapsed into a single 512-d class prototype — faster matching, higher accuracy.<br>
+        <strong>Stage 3 — Threshold Calibration:</strong> Leave-one-out cross-validation over all students sweeps thresholds 0.20→0.60 to maximise macro-F1, then calibrates per demographic group for racial fairness.
+      </span>
+    </div>
+
+    <div class="two-col" style="align-items:start">
+      <!-- Control panel -->
+      <div class="form-card">
+        <div class="form-title">🚀 Run Optimization</div>
+
+        <div class="form-row">
+          <label>Minimum Quality Score (0.0 – 1.0)</label>
+          <input type="range" id="minQuality" min="0.05" max="0.50" step="0.05" value="0.15"
+                 oninput="document.getElementById('minQualityVal').textContent=this.value"
+                 style="width:100%;accent-color:var(--blue)">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);margin-top:3px">
+            <span>0.05 (permissive)</span>
+            <span id="minQualityVal" style="font-weight:700;color:var(--blue)">0.15</span>
+            <span>0.50 (strict)</span>
+          </div>
+          <div class="form-hint">Images scoring below this are excluded from the prototype. Recommended: 0.10–0.20.</div>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-primary" id="runOptBtn" onclick="runOptimization()">Run Optimization</button>
+          <button class="btn btn-outline" onclick="pollOptimizationStatus()">↻ Check Status</button>
+        </div>
+
+        <div id="optStatus" style="margin-top:14px;font-size:13px"></div>
+
+        <!-- Progress stages -->
+        <div id="optStages" style="display:none;margin-top:16px">
+          <div style="font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em">Pipeline Stages</div>
+          <div class="stage-row" id="stage1"><span class="stage-icon">⏳</span> Stage 1: Quality Scoring</div>
+          <div class="stage-row" id="stage2"><span class="stage-icon">⏳</span> Stage 2: Prototype Aggregation</div>
+          <div class="stage-row" id="stage3"><span class="stage-icon">⏳</span> Stage 3: Threshold Calibration</div>
+        </div>
+      </div>
+
+      <!-- Results panel -->
+      <div>
+        <div class="fairness-card" id="optResultCard" style="display:none">
+          <div class="fairness-title">Optimization Results</div>
+          <div id="optCompletedAt" style="font-size:11px;color:var(--text-dim);margin-bottom:14px"></div>
+
+          <!-- Summary stats grid -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px" id="optStatsGrid"></div>
+
+          <!-- Threshold comparison -->
+          <div style="font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">Calibrated Thresholds</div>
+          <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:14px">
+            <thead><tr style="border-bottom:1px solid var(--border)">
+              <th style="text-align:left;padding:5px 8px;color:var(--text-dim)">Scope</th>
+              <th style="text-align:left;padding:5px 8px;color:var(--text-dim)">New Threshold</th>
+              <th style="text-align:left;padding:5px 8px;color:var(--text-dim)">F1 Score</th>
+            </tr></thead>
+            <tbody id="optThresholdRows"></tbody>
+          </table>
+
+          <!-- Per-demographic F1 bars -->
+          <div style="font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em">Per-Demographic F1 After Calibration</div>
+          <div id="optFairnessBars"></div>
+
+          <div id="optEnvNote" style="margin-top:14px;font-size:12px;padding:10px;background:#f8f9fa;border-radius:6px;border-left:3px solid var(--green)"></div>
+        </div>
+
+        <div class="fairness-card" id="optHelpCard">
+          <div class="fairness-title">When to run</div>
+          <div style="font-size:12px;color:var(--text-dim);line-height:1.7">
+            <p style="margin-bottom:8px">Run optimization <strong>after registering all students</strong> for a new cohort, or whenever recognition accuracy drops.</p>
+            <p style="margin-bottom:8px"><strong>What it does to the database:</strong><br>
+            • Scores every registration image on quality<br>
+            • Replaces raw embeddings with a single weighted prototype per student<br>
+            • Updates <code>MATCH_THRESHOLD</code> and <code>RACE_THRESHOLDS</code> in <code>.env</code></p>
+            <p style="margin-bottom:8px"><strong>Restart the API</strong> after optimization to apply the new thresholds.</p>
+            <p><strong>Typical improvement:</strong> 5–15 pp accuracy gain from prototyping; 3–8 pp fairness gap reduction from per-demographic calibration.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div><!-- /content -->
+
+<!-- Footer -->
+<div class="footer">
+  <span>Smart Attendance System — AI Pipeline Demo &nbsp;|&nbsp; Dissertation Prototype</span>
+  <span id="footerStatus">Connecting…</span>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+const API = window.location.origin;
+let _logCache = [];
+let _overrideLog = [];
+let _students = [];
+
+// ── Clock ─────────────────────────────────────────────────────────────────────
+function tickClock() {
+  const now = new Date();
+  document.getElementById('headerClock').textContent =
+    now.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+setInterval(tickClock, 1000); tickClock();
+
+// ── Tab switching (defined later in Hypertune section with optimize support) ──
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg, type='') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'toast show ' + type;
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fmtDt(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}) + ' ' +
+         d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+}
+
+function timeAgo(iso) {
+  if (!iso) return 'Never';
+  const diff = (Date.now() - new Date(iso)) / 1000;
+  if (diff < 60) return Math.round(diff)+'s ago';
+  if (diff < 3600) return Math.round(diff/60)+'m ago';
+  if (diff < 86400) return Math.round(diff/3600)+'h ago';
+  return Math.round(diff/86400)+'d ago';
+}
+
+// ── Overview ──────────────────────────────────────────────────────────────────
+async function loadOverview() {
+  try {
+    const [health, queue, events, devices] = await Promise.all([
+      fetch(`${API}/health`).then(r=>r.json()),
+      fetch(`${API}/ingest/queue/status`).then(r=>r.json()),
+      fetch(`${API}/attendance/events?limit=20`).then(r=>r.json()),
+      fetch(`${API}/devices`).then(r=>r.json()),
+    ]);
+
+    // Model status
+    const modelEl = document.getElementById('h-model');
+    modelEl.textContent = health.face_model_loaded ? 'Loaded ✓' : 'Not Loaded ✗';
+    modelEl.style.color = health.face_model_loaded ? 'var(--green)' : 'var(--red)';
+
+    // Queue health
+    const q = queue.queue || {};
+    document.getElementById('h-pending').textContent = q.pending ?? 0;
+    document.getElementById('h-pending').style.color = (q.pending||0)>10 ? 'var(--orange)' : 'var(--text)';
+    document.getElementById('h-completed').textContent = q.complete ?? 0;
+    document.getElementById('h-failed').textContent = q.failed ?? 0;
+    document.getElementById('h-failed').style.color = (q.failed||0)>0 ? 'var(--red)' : 'var(--text)';
+
+    // KPI cards
+    const recognized = events.filter(e=>e.status==='recognized').length;
+    const total = events.length;
+    const accuracy = total > 0 ? (recognized/total*100).toFixed(1)+'%' : 'N/A';
+    document.getElementById('kpi-accuracy').textContent = accuracy;
+    document.getElementById('kpi-events').textContent = total;
+
+    // Students today
+    const today = new Date().toISOString().slice(0,10);
+    const todayIds = new Set(events.filter(e=>e.captured_at && e.captured_at.slice(0,10)===today && e.student_id).map(e=>e.student_id));
+    document.getElementById('kpi-today').textContent = todayIds.size;
+
+    document.getElementById('kpi-queue').textContent = q.pending ?? 0;
+    document.getElementById('kpi-queue').style.color = (q.pending||0)>10 ? 'var(--orange)' : '';
+
+    const activeDevCount = devices.filter(d=>d.status==='active').length;
+    document.getElementById('kpi-devices').textContent = activeDevCount;
+
+    // Footer status
+    document.getElementById('footerStatus').textContent = `Last refreshed: ${new Date().toLocaleTimeString('en-GB')}`;
+
+    // Table
+    renderEventTable('overviewTableBody', events);
+
+  } catch(e) {
+    document.getElementById('overviewTableBody').innerHTML =
+      `<tr><td colspan="6" class="state-msg" style="color:var(--red)">⚠️ Could not load data: ${e.message}</td></tr>`;
+  }
+}
+
+function renderEventTable(tbodyId, events) {
+  const tbody = document.getElementById(tbodyId);
+  if (!events.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="state-msg">No events recorded yet.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = events.map(e => {
+    const isOk = e.status === 'recognized';
+    return `<tr class="${isOk?'row-ok':'row-risk'}">
+      <td>${fmtDt(e.captured_at)}</td>
+      <td>${escHtml(e.student_id||'—')}</td>
+      <td>${escHtml(e.class_id||'—')}</td>
+      <td>${escHtml(e.camera_id||'—')}</td>
+      <td>${e.confidence!=null ? (e.confidence*100).toFixed(1)+'%' : '—'}</td>
+      <td><span class="badge ${escHtml(e.status)}">${escHtml(e.status)}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Attendance Log ────────────────────────────────────────────────────────────
+async function loadLog() {
+  document.getElementById('logTableBody').innerHTML =
+    '<tr><td colspan="7" class="state-msg"><span class="spinner"></span>Loading…</td></tr>';
+  try {
+    _logCache = await fetch(`${API}/attendance/events?limit=500`).then(r=>r.json());
+    renderLog();
+  } catch(e) {
+    document.getElementById('logTableBody').innerHTML =
+      `<tr><td colspan="7" class="state-msg" style="color:var(--red)">⚠️ ${e.message}</td></tr>`;
+  }
+}
+
+function renderLog() {
+  const classF = document.getElementById('filter-class')?.value.toLowerCase() || '';
+  const dateF  = document.getElementById('filter-date')?.value || '';
+  const statF  = document.getElementById('filter-status')?.value || '';
+
+  const filtered = _logCache.filter(e => {
+    if (classF && !String(e.class_id||'').toLowerCase().includes(classF)) return false;
+    if (dateF  && !(e.captured_at||'').startsWith(dateF)) return false;
+    if (statF  && e.status !== statF) return false;
+    return true;
+  });
+
+  document.getElementById('log-count').textContent = `${filtered.length} records`;
+
+  const tbody = document.getElementById('logTableBody');
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="state-msg">No matching records.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = filtered.map(e => {
+    const isOk = e.status==='recognized';
+    return `<tr class="${isOk?'row-ok':'row-risk'}">
+      <td>${fmtDt(e.captured_at)}</td>
+      <td>${escHtml(e.student_id||'—')}</td>
+      <td>${escHtml(e.class_id||'—')}</td>
+      <td>${escHtml(e.camera_id||'—')}</td>
+      <td>${e.confidence!=null?(e.confidence*100).toFixed(1)+'%':'—'}</td>
+      <td><span class="badge manual">face_recog</span></td>
+      <td><span class="badge ${escHtml(e.status)}">${escHtml(e.status)}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Manual Override ───────────────────────────────────────────────────────────
+async function loadOverrideSupport() {
+  // Set default datetime to now
+  const now = new Date(Date.now() - new Date().getTimezoneOffset()*60000);
+  document.getElementById('mo-datetime').value = now.toISOString().slice(0,16);
+
+  // Load students for picker
+  if (_students.length===0) {
+    try {
+      _students = await fetch(`${API}/students/list`).then(r=>r.json());
+      const sel = document.getElementById('mo-student');
+      _students.forEach(s => {
+        const o = document.createElement('option');
+        o.value = s.student_id; o.textContent = `${s.name} (${s.student_id})`;
+        sel.appendChild(o);
+      });
+    } catch {}
+  }
+
+  // Load distinct class IDs for datalist
+  try {
+    const events = await fetch(`${API}/attendance/events?limit=200`).then(r=>r.json());
+    const ids = [...new Set(events.map(e=>e.class_id).filter(Boolean))];
+    const dl = document.getElementById('classSuggestions');
+    dl.innerHTML = ids.map(id=>`<option value="${escHtml(id)}">`).join('');
+  } catch {}
+
+  // Load alerts
+  try {
+    const [health, queue] = await Promise.all([
+      fetch(`${API}/health`).then(r=>r.json()),
+      fetch(`${API}/ingest/queue/status`).then(r=>r.json()),
+    ]);
+    const alerts = [];
+    if (!health.face_model_loaded) alerts.push('⚠️ Face model not loaded — running: python -m worker.download_models');
+    const q = queue.queue||{};
+    if ((q.pending||0) > 20) alerts.push(`⚠️ ${q.pending} images pending in queue — worker may be down`);
+    if ((q.failed||0) > 0) alerts.push(`❌ ${q.failed} failed jobs require attention`);
+    document.getElementById('alertList').innerHTML =
+      alerts.length ? alerts.map(a=>`<div style="padding:4px 0;border-bottom:1px solid var(--border)">${a}</div>`).join('')
+                    : '<div style="color:var(--green)">✓ All systems nominal</div>';
+  } catch {}
+}
+
+async function submitOverride() {
+  const studentId = document.getElementById('mo-student').value;
+  const classId   = document.getElementById('mo-class').value.trim();
+  const dt        = document.getElementById('mo-datetime').value;
+  const status    = document.getElementById('mo-status').value;
+  const notes     = document.getElementById('mo-notes').value.trim();
+  const msgEl     = document.getElementById('overrideMsg');
+
+  if (!studentId || !classId || !dt) {
+    msgEl.innerHTML = '<span style="color:var(--red)">Please fill Student, Module, and Date/Time.</span>';
+    return;
+  }
+
+  msgEl.innerHTML = '<span class="spinner"></span>Submitting…';
+
+  try {
+    const fd = new FormData();
+    fd.append('student_id', studentId);
+    fd.append('class_id', classId);
+    fd.append('captured_at', new Date(dt).toISOString());
+    fd.append('status', status);
+    fd.append('notes', notes);
+    fd.append('camera_id', 'manual-override');
+
+    const r = await fetch(`${API}/attendance/manual`, {method:'POST', body:fd});
+    if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
+    const res = await r.json();
+
+    msgEl.innerHTML = `<span style="color:var(--green)">✓ Override recorded (event ID: ${res.event_id})</span>`;
+    toast('Override saved successfully', 'ok');
+
+    // Add to override log
+    _overrideLog.unshift({student_id:studentId, class_id:classId, captured_at:dt, status});
+    renderOverrideLog();
+    clearOverrideForm();
+  } catch(e) {
+    msgEl.innerHTML = `<span style="color:var(--red)">⚠️ ${escHtml(e.message)}</span>`;
+  }
+}
+
+function renderOverrideLog() {
+  const tbody = document.getElementById('overrideLogBody');
+  if (!_overrideLog.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="state-msg">No overrides yet.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = _overrideLog.slice(0,10).map(e => `
+    <tr>
+      <td>${fmtDt(e.captured_at)}</td>
+      <td>${escHtml(e.student_id)}</td>
+      <td>${escHtml(e.class_id)}</td>
+      <td><span class="badge manual">Manual</span></td>
+    </tr>`).join('');
+}
+
+function clearOverrideForm() {
+  document.getElementById('mo-student').value = '';
+  document.getElementById('mo-class').value = '';
+  document.getElementById('mo-notes').value = '';
+  document.getElementById('overrideMsg').innerHTML = '';
+}
+
+// ── Devices ───────────────────────────────────────────────────────────────────
+async function loadDevices() {
+  try {
+    const devices = await fetch(`${API}/devices`).then(r=>r.json());
+    const tbody = document.getElementById('devTableBody');
+    if (!devices.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="state-msg">No devices registered yet. Click "+ Register Device" above.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = devices.map(d => `
+      <tr>
+        <td><strong>${escHtml(d.name)}</strong></td>
+        <td>${escHtml(d.room_label||'—')}</td>
+        <td style="font-family:monospace;font-size:12px">${escHtml(d.device_mac||'—')}</td>
+        <td>${escHtml(d.firmware_version||'—')}</td>
+        <td>${timeAgo(d.last_seen_at)}</td>
+        <td><span class="dot ${d.status}"></span><span class="badge ${d.status}">${d.status}</span></td>
+      </tr>`).join('');
+  } catch(e) {
+    document.getElementById('devTableBody').innerHTML =
+      `<tr><td colspan="6" class="state-msg" style="color:var(--red)">⚠️ ${escHtml(e.message)}</td></tr>`;
+  }
+}
+
+function showRegisterDevice() {
+  const f = document.getElementById('registerDeviceForm');
+  f.style.display = f.style.display==='none' ? '' : 'none';
+}
+
+async function registerDevice() {
+  const name = document.getElementById('dev-name').value.trim();
+  const room = document.getElementById('dev-room').value.trim();
+  const mac  = document.getElementById('dev-mac').value.trim();
+  const msg  = document.getElementById('devRegMsg');
+
+  if (!name) { msg.innerHTML='<span style="color:var(--red)">Device name is required.</span>'; return; }
+
+  try {
+    const fd = new FormData();
+    fd.append('name', name);
+    if (room) fd.append('room_label', room);
+    if (mac)  fd.append('device_mac', mac);
+
+    const r = await fetch(`${API}/devices/register`, {method:'POST', body:fd});
+    if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
+    const res = await r.json();
+
+    msg.innerHTML = `<span style="color:var(--green)">✓ Registered! API Key: <code style="font-size:11px;word-break:break-all">${res.api_key}</code> (shown once — copy now)</span>`;
+    toast('Device registered', 'ok');
+    loadDevices();
+  } catch(e) {
+    msg.innerHTML = `<span style="color:var(--red)">⚠️ ${escHtml(e.message)}</span>`;
+  }
+}
+
+// ── Fairness KPIs ─────────────────────────────────────────────────────────────
+const GROUP_LABELS = {
+  white:             'White',
+  black:             'Black / African',
+  indian:            'Indian',
+  east_asian:        'East Asian',
+  southeast_asian:   'SE Asian',
+  middle_eastern:    'Middle Eastern',
+  latino_hispanic:   'Latino / Hispanic',
+};
+const GROUP_ORDER = Object.keys(GROUP_LABELS);
+
+async function loadFairness() {
+  try {
+    const data = await fetch(`${API}/admin/fairness`).then(r=>r.json());
+    renderFairnessBars(data.demographics);
+    renderThresholds(data.thresholds);
+    renderDemoTable(data.demographics);
+  } catch(e) {
+    document.getElementById('fairnessBars').innerHTML =
+      `<div class="state-msg" style="color:var(--red)">⚠️ ${escHtml(e.message)}</div>`;
+  }
+}
+
+function renderFairnessBars(demos) {
+  if (!demos || !Object.keys(demos).length) {
+    document.getElementById('fairnessBars').innerHTML =
+      '<div style="color:var(--text-dim);font-size:13px;padding:12px 0">No demographic data yet. Register students with demographic_group labels and run face check-ins.</div>';
+    return;
+  }
+
+  const rates = GROUP_ORDER.map(key => {
+    const d = demos[key] || {recognized:0, total:0, rate:0};
+    return {key, label:GROUP_LABELS[key], ...d};
+  }).filter(d => d.total > 0);
+
+  if (!rates.length) {
+    document.getElementById('fairnessBars').innerHTML =
+      '<div style="color:var(--text-dim);font-size:13px;padding:12px 0">No events with demographic labels yet.</div>';
+    return;
+  }
+
+  const maxRate = Math.max(...rates.map(r => r.rate));
+  const minRate = Math.min(...rates.map(r => r.rate));
+  const gap = maxRate - minRate;
+
+  document.getElementById('fairnessBars').innerHTML = rates.map(r => {
+    const pct = (r.rate * 100).toFixed(1);
+    const cls = r.rate >= 0.75 ? 'good' : r.rate >= 0.60 ? 'warn' : 'poor';
+    return `
+      <div class="bar-row">
+        <div class="bar-label">
+          <span class="bar-name">${r.label}</span>
+          <span class="bar-pct" style="color:var(--${cls==='good'?'green':cls==='warn'?'orange':'red'})">${pct}%</span>
+        </div>
+        <div class="bar-track"><div class="bar-fill ${cls}" style="width:${pct}%"></div></div>
+        <div class="bar-count">${r.recognized} recognized / ${r.total} total</div>
+      </div>`;
+  }).join('');
+
+  const gapEl = document.getElementById('fairnessGap');
+  const gapPct = (gap * 100).toFixed(1);
+  const gapOk = gap <= 0.15;
+  gapEl.style.background = gapOk ? 'var(--green-bg)' : 'var(--red-bg)';
+  gapEl.innerHTML = `<strong>Inter-group gap:</strong> ${gapPct} pp &nbsp;|&nbsp;
+    ${gapOk ? '✅ Within 15 pp target' : '❌ Exceeds 15 pp target — tune per-group thresholds'}
+    &nbsp;|&nbsp; <strong>Best:</strong> ${(maxRate*100).toFixed(1)}%  <strong>Worst:</strong> ${(minRate*100).toFixed(1)}%`;
+}
+
+function renderThresholds(thresholds) {
+  if (!thresholds) return;
+  document.getElementById('thresholdBody').innerHTML = GROUP_ORDER.map(key => {
+    const t = thresholds[key];
+    const display = t != null ? t.toFixed(3) : '(global default)';
+    return `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:7px 8px">${GROUP_LABELS[key]||key}</td>
+      <td style="padding:7px 8px;font-family:monospace;font-size:12px">${display}</td>
+      <td style="padding:7px 8px;color:var(--text-dim);font-size:12px" id="thr-count-${key}">—</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderDemoTable(demos) {
+  const tbody = document.getElementById('demoTableBody');
+  if (!demos || !Object.keys(demos).length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="state-msg">No demographic data.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = GROUP_ORDER.filter(k=>demos[k]).map(key => {
+    const d = demos[key];
+    const rate = (d.rate*100).toFixed(1);
+    const cls = d.rate>=0.75?'ok':'risk';
+    // update threshold count
+    const el = document.getElementById(`thr-count-${key}`);
+    if (el) el.textContent = d.total;
+    return `<tr class="row-${cls}">
+      <td>${GROUP_LABELS[key]}</td>
+      <td>${d.total}</td>
+      <td>${d.recognized}</td>
+      <td>${d.unknown||0}</td>
+      <td>${d.low_confidence||0}</td>
+      <td><strong style="color:var(--${d.rate>=0.75?'green':'red'})">${rate}%</strong></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Hypertune ─────────────────────────────────────────────────────────────────
+const GROUP_LABELS_OPT = {
+  white:'White', black:'Black / African', indian:'Indian',
+  east_asian:'East Asian', southeast_asian:'SE Asian',
+  middle_eastern:'Middle Eastern', latino_hispanic:'Latino / Hispanic',
+};
+
+let _optPollTimer = null;
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  const idx = ['overview','log','override','devices','fairness','optimize'].indexOf(name);
+  document.querySelectorAll('.tab-btn')[idx].classList.add('active');
+  if (name==='log' && _logCache.length===0) loadLog();
+  if (name==='devices') loadDevices();
+  if (name==='fairness') loadFairness();
+  if (name==='override') loadOverrideSupport();
+  if (name==='optimize') { pollOptimizationStatus(); }
+}
+
+async function runOptimization() {
+  const minQ = document.getElementById('minQuality').value;
+  const btn  = document.getElementById('runOptBtn');
+  const stat = document.getElementById('optStatus');
+  btn.disabled = true;
+  stat.innerHTML = '<span class="spinner"></span> Starting optimization pipeline…';
+
+  // Show stage tracker
+  document.getElementById('optStages').style.display = '';
+  setStage(1,'running'); setStage(2,'wait'); setStage(3,'wait');
+
+  try {
+    const r = await fetch(`${API}/admin/optimize?min_quality=${minQ}`, {method:'POST'});
+    if (!r.ok) {
+      const d = await r.json();
+      throw new Error(d.detail || r.statusText);
+    }
+    stat.innerHTML = '<span style="color:var(--blue)">Pipeline running — polling for results…</span>';
+    if (_optPollTimer) clearInterval(_optPollTimer);
+    _optPollTimer = setInterval(pollOptimizationStatus, 2000);
+  } catch(e) {
+    stat.innerHTML = `<span style="color:var(--red)">⚠️ ${escHtml(e.message)}</span>`;
+    btn.disabled = false;
+    setStage(1,'wait'); setStage(2,'wait'); setStage(3,'wait');
+  }
+}
+
+async function pollOptimizationStatus() {
+  try {
+    const d = await fetch(`${API}/admin/optimize/status`).then(r=>r.json());
+    const btn  = document.getElementById('runOptBtn');
+    const stat = document.getElementById('optStatus');
+
+    if (d.running) {
+      // Animate stages while running
+      const elapsed = Date.now();
+      setStage(1, 'done');
+      setStage(2, elapsed % 4000 < 2000 ? 'running' : 'done');
+      setStage(3, 'running');
+      stat.innerHTML = '<span class="spinner"></span> Optimization running…';
+      btn.disabled = true;
+    } else {
+      if (_optPollTimer) { clearInterval(_optPollTimer); _optPollTimer = null; }
+      btn.disabled = false;
+
+      if (d.last_result && !d.last_result.error) {
+        setStage(1,'done'); setStage(2,'done'); setStage(3,'done');
+        stat.innerHTML = `<span style="color:var(--green)">✅ Optimization complete</span>`;
+        renderOptResult(d.last_result);
+      } else if (d.last_result && d.last_result.error) {
+        setStage(1,'wait'); setStage(2,'wait'); setStage(3,'wait');
+        stat.innerHTML = `<span style="color:var(--red)">⚠️ Error: ${escHtml(d.last_result.error)}</span>`;
+      } else {
+        stat.innerHTML = '<span style="color:var(--text-dim)">No optimization run yet.</span>';
+        document.getElementById('optStages').style.display = 'none';
+      }
+    }
+  } catch(e) {
+    document.getElementById('optStatus').innerHTML =
+      `<span style="color:var(--red)">⚠️ Cannot reach API: ${escHtml(e.message)}</span>`;
+  }
+}
+
+function setStage(n, state) {
+  const el = document.getElementById('stage'+n);
+  if (!el) return;
+  const labels = ['','Quality Scoring','Prototype Aggregation','Threshold Calibration'];
+  const icons  = {done:'✅', running:'⚙️', wait:'⏳'};
+  el.className = 'stage-row' + (state==='done' ? ' done' : state==='running' ? ' running' : '');
+  el.innerHTML = `<span class="stage-icon">${icons[state]}</span> Stage ${n}: ${labels[n]}`;
+}
+
+function renderOptResult(r) {
+  const card = document.getElementById('optResultCard');
+  const help = document.getElementById('optHelpCard');
+  card.style.display = '';
+  help.style.display = 'none';
+
+  document.getElementById('optCompletedAt').textContent =
+    r.completed_at ? 'Completed: ' + fmtDt(r.completed_at) : '';
+
+  // Summary stats
+  const grid = document.getElementById('optStatsGrid');
+  grid.innerHTML = [
+    ['Students', r.students_processed],
+    ['Images Scored', r.embeddings_scored],
+    ['Low Quality Dropped', r.low_quality_count],
+    ['Prototypes Built', r.prototypes_built],
+  ].map(([lbl,val]) => `
+    <div class="opt-stat">
+      <div class="opt-stat-val">${val}</div>
+      <div class="opt-stat-lbl">${lbl}</div>
+    </div>`).join('');
+
+  // Threshold rows
+  const tbody = document.getElementById('optThresholdRows');
+  const f1Pct = v => v != null ? (v*100).toFixed(1)+'%' : '—';
+  const rows = [['Global (all groups)', r.global_threshold, r.global_f1]];
+  Object.entries(r.race_thresholds||{}).forEach(([g,t]) => {
+    rows.push([GROUP_LABELS_OPT[g]||g, t, r.per_demographic_f1?.[g]]);
+  });
+  tbody.innerHTML = rows.map(([scope,t,f1]) => {
+    const f1num = typeof f1==='number' ? f1 : null;
+    const ok = f1num!=null && f1num>=0.75;
+    const col = f1num==null ? '' : ok ? 'color:var(--green)' : 'color:var(--red)';
+    return `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:6px 8px">${escHtml(scope)}</td>
+      <td style="padding:6px 8px;font-family:monospace;font-size:12px;color:var(--blue)">${t}</td>
+      <td style="padding:6px 8px;font-weight:700;${col}">${f1Pct(f1num)}</td>
+    </tr>`;
+  }).join('');
+
+  // Per-demographic F1 bars
+  const barsEl = document.getElementById('optFairnessBars');
+  const demoF1 = r.per_demographic_f1 || {};
+  if (Object.keys(demoF1).length === 0) {
+    barsEl.innerHTML = '<div style="color:var(--text-dim);font-size:12px">No demographic data yet — register students with demographic_group labels.</div>';
+  } else {
+    barsEl.innerHTML = Object.entries(demoF1).map(([g,f1]) => {
+      const pct = (f1*100).toFixed(1);
+      const cls = f1>=0.75?'good':f1>=0.60?'warn':'poor';
+      const col = f1>=0.75?'var(--green)':f1>=0.60?'var(--orange)':'var(--red)';
+      return `<div class="bar-row">
+        <div class="bar-label">
+          <span class="bar-name">${GROUP_LABELS_OPT[g]||g}</span>
+          <span class="bar-pct" style="color:${col}">${pct}%</span>
+        </div>
+        <div class="bar-track"><div class="bar-fill ${cls}" style="width:${pct}%"></div></div>
+      </div>`;
+    }).join('');
+  }
+
+  // .env note
+  document.getElementById('optEnvNote').innerHTML =
+    `✅ <strong>Thresholds written to <code>.env</code></strong> — restart the API server to apply the new thresholds.<br>
+     New global threshold: <code>${r.global_threshold}</code>  |  Global F1: <strong>${f1Pct(r.global_f1)}</strong>`;
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadOverview();
+setInterval(loadOverview, 30000); // auto-refresh overview every 30s
+</script>
+</body>
+</html>

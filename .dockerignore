@@ -1,0 +1,15 @@
+__pycache__
+*.pyc
+*.pyo
+.env
+.git
+.venv
+venv
+work/spool
+work/registrations
+work/logs
+work/attendance.db*
+dissertation
+outputs
+.vscode
+.idea

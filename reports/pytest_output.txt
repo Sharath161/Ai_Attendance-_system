@@ -1,0 +1,38 @@
+============================= test session starts =============================
+platform win32 -- Python 3.14.5, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\ranga\AppData\Local\Python\pythoncore-3.14-64\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\ranga\OneDrive\Documents\Desertation\develop-an-efficient-and-scalable-backend
+plugins: anyio-4.14.1, asyncio-1.4.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 5 items
+
+tests/fairness/test_yolov8_fairface.py::TestOlivettiOverall::test_overall_f1 PASSED [ 20%]
+tests/fairness/test_yolov8_fairface.py::TestOlivettiOverall::test_zero_cross_person_matches FAILED [ 40%]
+tests/fairness/test_yolov8_fairface.py::TestFairFaceEquity::test_per_race_detection_rate SKIPPED [ 60%]
+tests/fairness/test_yolov8_fairface.py::TestFairFaceEquity::test_per_race_f1 SKIPPED [ 80%]
+tests/fairness/test_yolov8_fairface.py::TestFairFaceEquity::test_f1_fairness_gap SKIPPED [100%]
+
+================================== FAILURES ===================================
+_____________ TestOlivettiOverall.test_zero_cross_person_matches ______________
+tests\fairness\test_yolov8_fairface.py:145: in test_zero_cross_person_matches
+    assert fp_rate <= 0.05, (
+E   AssertionError: Cross-person false-positive rate 17.5% exceeds 5%. Threshold may be too low.
+E   assert 0.175 <= 0.05
+============================== warnings summary ===============================
+tests/fairness/test_yolov8_fairface.py::TestOlivettiOverall::test_overall_f1
+  C:\Users\ranga\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\_pytest\fixtures.py:1313: PytestRemovedIn10Warning: Class-scoped fixture defined as instance method is deprecated.
+  Instance attributes set in this fixture will NOT be visible to test methods,
+  as each test gets a new instance while the fixture runs only once per class.
+  Use @classmethod decorator and set attributes on cls instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#class-scoped-fixture-as-instance-method
+    fixturefunc = resolve_fixture_function(fixturedef, request)
+
+tests/fairness/test_yolov8_fairface.py::TestOlivettiOverall::test_overall_f1
+  C:\Users\ranga\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\joblib\numpy_pickle.py:207: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+  As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+    array.shape = self.shape
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/fairness/test_yolov8_fairface.py::TestOlivettiOverall::test_zero_cross_person_matches
+============= 1 failed, 1 passed, 3 skipped, 2 warnings in 10.41s =============
