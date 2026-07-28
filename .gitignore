@@ -24,6 +24,9 @@ work/spool/
 work/registrations/
 # diagnostic webcam snapshots (real photos):
 work/diag/
+# your own test photos of real people (biometric PII) — keep only the guide:
+work/my_people/*
+!work/my_people/README.txt
 work/logs/
 # 51 MB ONNX weights — re-fetch with: python -m worker.download_models
 work/models/
