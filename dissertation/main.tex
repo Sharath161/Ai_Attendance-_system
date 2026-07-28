@@ -399,6 +399,7 @@ The system follows a three-tier architecture: (1) IoT capture layer at the class
 
 \begin{figure}[H]
 \centering
+\resizebox{\textwidth}{!}{%
 \begin{tikzpicture}[node distance=1.2cm and 1.6cm]
 
   % --- IoT Layer ---
@@ -462,7 +463,8 @@ The system follows a three-tier architecture: (1) IoT capture layer at the class
           inner sep=8pt] {};
   \end{scope}
 
-\end{tikzpicture}
+\end{tikzpicture}%
+}
 \caption{High-level system architecture: IoT capture, on-premise batch processing, and dashboard layers.}
 \label{fig:arch_overview}
 \end{figure}
