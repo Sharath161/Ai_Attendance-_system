@@ -26,9 +26,7 @@
 \usepackage{fancyhdr}
 \pagestyle{fancy}
 \fancyhf{}
-\fancyhead[L]{\small AI-Powered Attendance System}
-\fancyhead[R]{\small \leftmark}
-\fancyfoot[C]{\thepage}
+\fancyhead[R]{\small\thepage}
 \renewcommand{\headrulewidth}{0.4pt}
 
 %--- Maths
@@ -186,38 +184,113 @@
 }
 
 %=============================================================
+%  MA981 template look — Orange-Book chapter style
+%=============================================================
+\usepackage{titlesec}
+
+\definecolor{ocre}{RGB}{199,84,32}         % chapter / rule orange
+\definecolor{covertitle}{RGB}{0,124,146}   % teal cover title
+\definecolor{essexpurple}{RGB}{82,45,109}
+\definecolor{essexred}{RGB}{228,0,43}
+
+% Word rotated beside the number box; becomes APPENDIX after \appendix
+\newcommand{\headword}{CHAPTER}
+
+% Orange square holding the chapter number/letter, with rotated word to its left
+\newcommand{\numberbox}[1]{%
+  \begin{tikzpicture}[baseline=(num.base)]
+    \node[anchor=east, inner sep=2pt] (word) at (-4pt,0)
+      {\rotatebox{90}{\normalfont\scshape\large \headword}};
+    \node[anchor=west, fill=ocre, minimum size=1.85cm, inner sep=0pt,
+          text=white, font=\fontsize{54}{54}\selectfont\bfseries] (num) at (0,0) {#1};
+  \end{tikzpicture}%
+}
+
+% Numbered chapters: right-aligned number box, orange rule, orange sans title
+\titleformat{\chapter}[display]
+  {\raggedright\normalfont\sffamily\bfseries\fontsize{25}{29}\selectfont\color{ocre}}
+  {\hfill\numberbox{\thechapter}}
+  {8pt}
+  {\color{ocre}\titlerule[2.5pt]\vspace{10pt}}
+\titlespacing*{\chapter}{0pt}{30pt}{34pt}
+
+% Unnumbered chapters (Abstract, Contents, List of ..., Bibliography): rule + title
+\titleformat{name=\chapter,numberless}[display]
+  {\raggedright\normalfont\sffamily\bfseries\fontsize{25}{29}\selectfont\color{ocre}}
+  {}
+  {0pt}
+  {\color{ocre}\titlerule[2.5pt]\vspace{10pt}}
+\titlespacing*{name=\chapter,numberless}{0pt}{30pt}{34pt}
+
+% Clean chapter-opening pages (no header rule / number), like the template
+\fancypagestyle{plain}{\fancyhf{}\renewcommand{\headrulewidth}{0pt}}
+
+% Essex square-mark logo (placeholder approximation — swap in the official
+% logo with \includegraphics if you have the image file)
+\newcommand{\essexlogo}{%
+  \begin{tikzpicture}[x=0.5cm,y=0.5cm]
+    \fill[essexpurple] (0,2) rectangle (1,3);
+    \fill[essexpurple] (0,1) rectangle (1,2);
+    \fill[essexpurple] (1,1) rectangle (2,2);
+    \fill[essexred]    (1,2) rectangle (2,3);
+    \fill[essexred]    (2,0) rectangle (3,1);
+    \fill[essexpurple] (1,0) rectangle (2,1);
+  \end{tikzpicture}%
+}
+
+%=============================================================
 \begin{document}
 %=============================================================
 
-%--- Title Page
+%--- Title Page (MA981 template layout)
 \begin{titlepage}
-  \centering
-  \vspace*{2cm}
+  \thispagestyle{empty}
+  \setlength{\parindent}{0pt}
 
-  {\huge\bfseries AI-Powered Automated Attendance System\\[0.5em]
-  \large Using ESP32-CAM Edge Capture, ArcFace Face Recognition,\\
-  and Batch On-Premise Processing at University Scale\par}
+  % Header: Essex logo + university / department
+  \begin{minipage}[c]{0.2\textwidth}
+    \essexlogo
+  \end{minipage}\hfill
+  \begin{minipage}[c]{0.78\textwidth}
+    \raggedleft
+    {\LARGE\itshape University of Essex}\\[4pt]
+    {\LARGE\bfseries Department of Mathematical Sciences}
+  \end{minipage}
 
-  \vspace{1.5cm}
-  \rule{\linewidth}{0.5pt}
-  \vspace{0.5cm}
+  \vspace{6pt}
+  {\color{ocre}\rule{\textwidth}{2.5pt}}
 
-  {\large A Dissertation Submitted in Partial Fulfilment of the Requirements\\
-  for the Degree of Bachelor of Science in Computer Science\par}
+  \vspace{2.4cm}
+  \begin{center}
+    {\LARGE MA981: D\textsc{issertation}\par}
 
-  \vspace{2cm}
+    \vspace{1.8cm}
+    {\color{covertitle}\fontsize{28}{34}\selectfont AI-Powered Automated\\[4pt]
+      Attendance System\par}
 
-  \begin{tabular}{ll}
-    \textbf{Author:}      & [Your Full Name] \\[0.3em]
-    \textbf{Student ID:}  & [Your Student ID] \\[0.3em]
-    \textbf{Supervisor:}  & [Supervisor Name] \\[0.3em]
-    \textbf{School:}      & School of Computing \\[0.3em]
-    \textbf{University:}  & [University Name] \\[0.3em]
-    \textbf{Date:}        & June 2026 \\
-  \end{tabular}
+    \vspace{0.7cm}
+    {\large Using ESP32-CAM Edge Capture, ArcFace Face Recognition,\\
+      and Batch On-Premise Processing at University Scale\par}
 
+    \vspace{1.8cm}
+    {\Large\bfseries Sharath Chandra Ranga\par}
+    \vspace{6pt}
+    {\large\bfseries Student registration number: [PRN]\par}
+
+    \vspace{2.6cm}
+    {\large Supervisor: [Supervisor Name]\par}
+  \end{center}
+
+  \vspace{0.7cm}
+  {\color{ocre}\rule{\textwidth}{2.5pt}}
+
+  \vspace{1.4cm}
+  \begin{center}
+    {\large \today\par}
+    \vspace{6pt}
+    {\large Colchester\par}
+  \end{center}
   \vfill
-  % \includegraphics[width=4cm]{university_logo}   % uncomment and add logo file when available
 \end{titlepage}
 
 %--- Abstract
@@ -1790,292 +1863,7 @@ Zhang, C., Yu, M., and Wei, W. (2019).
 \end{thebibliography}
 
 \appendix
-
-\chapter{ESP32-CAM Arduino Firmware}
-\begin{lstlisting}[language=C++, caption={ESP32-CAM complete firmware sketch}]
-#include <WiFi.h>
-#include <HTTPClient.h>
-#include "esp_camera.h"
-#include <Wire.h>
-#include <Adafruit_SSD1306.h>
-#include <time.h>
-
-// ---- Configuration ----
-const char* SSID        = "UniversityWiFi";
-const char* WIFI_PASS   = "your_password";
-const char* SERVER_URL  = "http://192.168.1.100:8000/api/v1/ingest/image";
-const char* DEVICE_KEY  = "ESP32-MAC-AABBCCDDEE-SECRET";
-const int   LED_GREEN   = 12;
-const int   LED_RED     = 13;
-const int   CAPTURE_INTERVAL_MS = 5000;  // capture every 5s
-
-Adafruit_SSD1306 display(128, 64, &Wire, -1);
-
-void setup() {
-  Serial.begin(115200);
-  pinMode(LED_GREEN, OUTPUT);
-  pinMode(LED_RED, OUTPUT);
-
-  // OLED init
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
-  display.clearDisplay();
-  showMessage("Connecting WiFi...");
-
-  // Camera init (AI-Thinker pin config)
-  camera_config_t config;
-  config.ledc_channel = LEDC_CHANNEL_0;
-  config.ledc_timer   = LEDC_TIMER_0;
-  config.pin_d0 = 5; config.pin_d1 = 18; config.pin_d2 = 19;
-  config.pin_d3 = 21; config.pin_d4 = 36; config.pin_d5 = 39;
-  config.pin_d6 = 34; config.pin_d7 = 35;
-  config.pin_xclk = 0; config.pin_pclk = 22;
-  config.pin_vsync = 25; config.pin_href = 23;
-  config.pin_sscb_sda = 26; config.pin_sscb_scl = 27;
-  config.pin_pwdn = 32; config.pin_reset = -1;
-  config.xclk_freq_hz = 20000000;
-  config.pixel_format  = PIXFORMAT_JPEG;
-  config.frame_size    = FRAMESIZE_VGA;  // 640x480
-  config.jpeg_quality  = 10;
-  config.fb_count      = 1;
-  esp_camera_init(&config);
-
-  WiFi.begin(SSID, WIFI_PASS);
-  while (WiFi.status() != WL_CONNECTED) { delay(500); }
-
-  // NTP time sync
-  configTime(0, 0, "pool.ntp.org");
-  showMessage("Ready\nLook at camera");
-}
-
-void loop() {
-  if (WiFi.status() != WL_CONNECTED) {
-    WiFi.reconnect();
-    delay(2000);
-    return;
-  }
-
-  camera_fb_t *fb = esp_camera_fb_get();
-  if (!fb) { delay(500); return; }
-
-  showMessage("Scanning...");
-  bool success = sendImage(fb);
-  esp_camera_fb_return(fb);
-
-  if (success) {
-    digitalWrite(LED_GREEN, HIGH);
-    showMessage("Queued OK");
-    delay(2000);
-    digitalWrite(LED_GREEN, LOW);
-  } else {
-    digitalWrite(LED_RED, HIGH);
-    showMessage("Network error\nRetrying...");
-    delay(2000);
-    digitalWrite(LED_RED, LOW);
-  }
-
-  showMessage("Look at camera");
-  delay(CAPTURE_INTERVAL_MS);
-}
-
-bool sendImage(camera_fb_t *fb) {
-  HTTPClient http;
-  http.begin(SERVER_URL);
-  http.addHeader("X-Device-Key", DEVICE_KEY);
-  http.addHeader("Content-Type", "image/jpeg");
-
-  // Timestamp header
-  time_t now; time(&now);
-  char ts[25]; strftime(ts, sizeof(ts), "%Y-%m-%dT%H:%M:%SZ", gmtime(&now));
-  http.addHeader("X-Captured-At", ts);
-
-  int code = http.POST(fb->buf, fb->len);
-  http.end();
-  return (code == 200);
-}
-
-void showMessage(const char* msg) {
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(0, 0);
-  display.println("Smart Attendance");
-  display.drawLine(0, 10, 127, 10, WHITE);
-  display.setCursor(0, 16);
-  display.println(msg);
-  display.display();
-}
-\end{lstlisting}
-
-\chapter{Database Schema SQL}
-\begin{lstlisting}[language=SQL, caption={Complete database schema (PostgreSQL)}]
-CREATE TABLE schools (
-  id         SERIAL PRIMARY KEY,
-  name       VARCHAR(150) NOT NULL UNIQUE,
-  code       VARCHAR(10)  NOT NULL UNIQUE,
-  dean_name  VARCHAR(100),
-  created_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE departments (
-  id         SERIAL PRIMARY KEY,
-  school_id  INTEGER NOT NULL REFERENCES schools(id),
-  name       VARCHAR(150) NOT NULL,
-  code       VARCHAR(20)  NOT NULL UNIQUE,
-  created_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE modules (
-  id             SERIAL PRIMARY KEY,
-  department_id  INTEGER NOT NULL REFERENCES departments(id),
-  name           VARCHAR(200) NOT NULL,
-  code           VARCHAR(20)  NOT NULL UNIQUE,
-  credits        SMALLINT NOT NULL,
-  semester       VARCHAR(20)  NOT NULL,
-  academic_year  VARCHAR(9)   NOT NULL,
-  created_at     TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE staff (
-  id            SERIAL PRIMARY KEY,
-  school_id     INTEGER REFERENCES schools(id),
-  name          VARCHAR(100) NOT NULL,
-  email         VARCHAR(200) NOT NULL UNIQUE,
-  role          VARCHAR(20)  NOT NULL DEFAULT 'lecturer',
-  password_hash VARCHAR(200) NOT NULL,
-  active        BOOLEAN NOT NULL DEFAULT TRUE,
-  created_at    TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE students (
-  id                 SERIAL PRIMARY KEY,
-  student_number     VARCHAR(20)  NOT NULL UNIQUE,
-  first_name         VARCHAR(80)  NOT NULL,
-  last_name          VARCHAR(80)  NOT NULL,
-  email              VARCHAR(200) NOT NULL UNIQUE,
-  school_id          INTEGER REFERENCES schools(id),
-  demographic_group  VARCHAR(50),
-  active             BOOLEAN NOT NULL DEFAULT TRUE,
-  created_at         TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at         TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE enrollments (
-  id            SERIAL PRIMARY KEY,
-  student_id    INTEGER NOT NULL REFERENCES students(id),
-  module_id     INTEGER NOT NULL REFERENCES modules(id),
-  academic_year VARCHAR(9)  NOT NULL,
-  status        VARCHAR(20) NOT NULL DEFAULT 'active',
-  created_at    TIMESTAMP NOT NULL DEFAULT NOW(),
-  UNIQUE (student_id, module_id, academic_year)
-);
-
-CREATE TABLE esp32_devices (
-  id               SERIAL PRIMARY KEY,
-  device_mac       VARCHAR(17) NOT NULL UNIQUE,
-  room_id          INTEGER REFERENCES rooms(id),
-  firmware_version VARCHAR(20),
-  last_seen_at     TIMESTAMP,
-  status           VARCHAR(20) NOT NULL DEFAULT 'active',
-  created_at       TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE rooms (
-  id               SERIAL PRIMARY KEY,
-  building         VARCHAR(100) NOT NULL,
-  room_number      VARCHAR(20)  NOT NULL,
-  capacity         SMALLINT,
-  esp32_device_id  INTEGER REFERENCES esp32_devices(id),
-  created_at       TIMESTAMP NOT NULL DEFAULT NOW(),
-  UNIQUE (building, room_number)
-);
-
-CREATE TABLE class_sessions (
-  id               SERIAL PRIMARY KEY,
-  module_id        INTEGER NOT NULL REFERENCES modules(id),
-  room_id          INTEGER REFERENCES rooms(id),
-  staff_id         INTEGER REFERENCES staff(id),
-  scheduled_start  TIMESTAMP NOT NULL,
-  scheduled_end    TIMESTAMP NOT NULL,
-  session_type     VARCHAR(20) NOT NULL DEFAULT 'lecture',
-  status           VARCHAR(20) NOT NULL DEFAULT 'scheduled',
-  created_at       TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE image_queue (
-  id               SERIAL PRIMARY KEY,
-  esp32_device_id  INTEGER REFERENCES esp32_devices(id),
-  session_id       INTEGER REFERENCES class_sessions(id),
-  image_path       VARCHAR(500) NOT NULL,
-  captured_at      TIMESTAMP NOT NULL,
-  processed_at     TIMESTAMP,
-  status           VARCHAR(20) NOT NULL DEFAULT 'pending',
-  error_msg        TEXT,
-  created_at       TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE attendance_records (
-  id               SERIAL PRIMARY KEY,
-  session_id       INTEGER NOT NULL REFERENCES class_sessions(id),
-  student_id       INTEGER NOT NULL REFERENCES students(id),
-  status           VARCHAR(20) NOT NULL DEFAULT 'present',
-  method           VARCHAR(20) NOT NULL DEFAULT 'face_recognition',
-  confidence_score REAL,
-  image_queue_id   INTEGER REFERENCES image_queue(id),
-  marked_by        INTEGER REFERENCES staff(id),
-  created_at       TIMESTAMP NOT NULL DEFAULT NOW(),
-  UNIQUE (session_id, student_id)
-);
-
-CREATE TABLE student_embeddings (
-  id                 SERIAL PRIMARY KEY,
-  student_id         INTEGER NOT NULL REFERENCES students(id),
-  embedding          BYTEA NOT NULL,
-  model_version      VARCHAR(50) NOT NULL,
-  demographic_group  VARCHAR(50),
-  active             BOOLEAN NOT NULL DEFAULT TRUE,
-  created_at         TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE fairness_metrics (
-  id             SERIAL PRIMARY KEY,
-  test_date      DATE NOT NULL,
-  dataset        VARCHAR(100) NOT NULL DEFAULT 'FairFace',
-  race_group     VARCHAR(50)  NOT NULL,
-  sample_size    INTEGER,
-  detection_rate REAL,
-  precision      REAL,
-  recall         REAL,
-  f1             REAL,
-  threshold_used REAL,
-  notes          TEXT,
-  created_at     TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE audit_log (
-  id           SERIAL PRIMARY KEY,
-  staff_id     INTEGER REFERENCES staff(id),
-  action       VARCHAR(50) NOT NULL,
-  target_table VARCHAR(50) NOT NULL,
-  target_id    INTEGER,
-  old_value    JSONB,
-  new_value    JSONB,
-  created_at   TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
--- Indexes
-CREATE INDEX idx_attendance_session ON attendance_records(session_id);
-CREATE INDEX idx_attendance_student ON attendance_records(student_id, created_at);
-CREATE INDEX idx_queue_status       ON image_queue(status, created_at);
-CREATE INDEX idx_embeddings_model   ON student_embeddings(model_version, active);
-CREATE INDEX idx_sessions_module    ON class_sessions(module_id, scheduled_start);
-CREATE INDEX idx_enrollments_lookup ON enrollments(student_id, module_id);
-\end{lstlisting}
-
-\end{document}
-
-\end{thebibliography}
-
-\appendix
+\renewcommand{\headword}{APPENDIX}
 
 \chapter{ESP32-CAM Arduino Firmware}
 \begin{lstlisting}[language=C++, caption={ESP32-CAM complete firmware sketch}]
