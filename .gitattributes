@@ -1,0 +1,16 @@
+# Normalise line endings across OSes; let git decide text vs binary by default
+* text=auto eol=lf
+
+# Windows-specific scripts keep CRLF
+*.ps1   text eol=crlf
+*.bat   text eol=crlf
+
+# Treat these as binary (no diff/eol munging)
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.pdf   binary
+*.docx  binary
+*.onnx  binary
+*.db    binary
+*.ipynb -text
