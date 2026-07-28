@@ -1482,7 +1482,11 @@ All endpoints are prefixed with \texttt{/api/v1}. Authentication uses JSON Web T
 
 \section{Endpoint Specifications}
 
-\begin{longtable}{p{4cm}p{1.5cm}p{4cm}p{5.5cm}}
+\begin{longtable}{%
+  >{\footnotesize\raggedright\arraybackslash}p{4.3cm}%
+  >{\footnotesize\raggedright\arraybackslash}p{1.3cm}%
+  >{\footnotesize\raggedright\arraybackslash}p{4.9cm}%
+  >{\footnotesize\raggedright\arraybackslash}p{2.7cm}}
 \caption{REST API Endpoint Reference}\label{tab:api}\\
 \toprule
 \textbf{Endpoint} & \textbf{Method} & \textbf{Description} & \textbf{Auth} \\
@@ -1499,30 +1503,30 @@ All endpoints are prefixed with \texttt{/api/v1}. Authentication uses JSON Web T
 \endlastfoot
 
 % IoT ingestion
-\texttt{/ingest/image}      & POST   & Upload JPEG from ESP32, enqueue for batch processing & Device API key \\
-\texttt{/devices/register}  & POST   & Register a new ESP32 device (admin only) & Admin JWT \\
-\texttt{/devices/\{id\}/status} & GET & Get device last-seen and status & Admin JWT \\
+\texttt{/\allowbreak ingest/\allowbreak image}      & POST   & Upload JPEG from ESP32, enqueue for batch processing & Device API key \\
+\texttt{/\allowbreak devices/\allowbreak register}  & POST   & Register a new ESP32 device (admin only) & Admin JWT \\
+\texttt{/\allowbreak devices/\allowbreak \{id\}/\allowbreak status} & GET & Get device last-seen and status & Admin JWT \\
 \midrule
 % Student
-\texttt{/students/register}    & POST   & Register new student with personal info & Admin JWT \\
-\texttt{/students/\{id\}/face} & POST   & Upload face photos for embedding generation & Admin JWT \\
-\texttt{/students/\{id\}/attendance} & GET & Full attendance history for student & Student JWT \\
-\texttt{/students/\{id\}/attendance/\{module\_id\}} & GET & Module-specific attendance \% & Student JWT \\
+\texttt{/\allowbreak students/\allowbreak register}    & POST   & Register new student with personal info & Admin JWT \\
+\texttt{/\allowbreak students/\allowbreak \{id\}/\allowbreak face} & POST   & Upload face photos for embedding generation & Admin JWT \\
+\texttt{/\allowbreak students/\allowbreak \{id\}/\allowbreak attendance} & GET & Full attendance history for student & Student JWT \\
+\texttt{/\allowbreak students/\allowbreak \{id\}/\allowbreak attendance/\allowbreak \{module\_id\}} & GET & Module-specific attendance \% & Student JWT \\
 \midrule
 % Attendance
-\texttt{/attendance/sessions/\{id\}} & GET & All attendance records for a session & Staff JWT \\
-\texttt{/attendance/override}        & POST & Manually mark attendance (admin/staff) & Admin JWT \\
-\texttt{/attendance/export}          & GET  & Export attendance CSV (filter by module, date) & Admin JWT \\
+\texttt{/\allowbreak attendance/\allowbreak sessions/\allowbreak \{id\}} & GET & All attendance records for a session & Staff JWT \\
+\texttt{/\allowbreak attendance/\allowbreak override}        & POST & Manually mark attendance (admin/staff) & Admin JWT \\
+\texttt{/\allowbreak attendance/\allowbreak export}          & GET  & Export attendance CSV (filter by module, date) & Admin JWT \\
 \midrule
 % Admin / KPI
-\texttt{/admin/queue/status}     & GET  & Queue depth, pending/done/failed counts & Admin JWT \\
-\texttt{/admin/kpi/accuracy}     & GET  & Recognition accuracy metrics & Admin JWT \\
-\texttt{/admin/kpi/fairness}     & GET  & Latest per-race F1 scores & Admin JWT \\
-\texttt{/admin/server/health}    & GET  & CPU, RAM, uptime, throughput & Admin JWT \\
+\texttt{/\allowbreak admin/\allowbreak queue/\allowbreak status}     & GET  & Queue depth, pending/done/failed counts & Admin JWT \\
+\texttt{/\allowbreak admin/\allowbreak kpi/\allowbreak accuracy}     & GET  & Recognition accuracy metrics & Admin JWT \\
+\texttt{/\allowbreak admin/\allowbreak kpi/\allowbreak fairness}     & GET  & Latest per-race F1 scores & Admin JWT \\
+\texttt{/\allowbreak admin/\allowbreak server/\allowbreak health}    & GET  & CPU, RAM, uptime, throughput & Admin JWT \\
 \midrule
 % Auth
-\texttt{/auth/login}    & POST & Obtain JWT token (student/staff/admin) & None \\
-\texttt{/auth/refresh}  & POST & Refresh expired JWT & Refresh token \\
+\texttt{/\allowbreak auth/\allowbreak login}    & POST & Obtain JWT token (student/staff/admin) & None \\
+\texttt{/\allowbreak auth/\allowbreak refresh}  & POST & Refresh expired JWT & Refresh token \\
 \end{longtable}
 
 \subsection{Image Ingestion Request Example}
