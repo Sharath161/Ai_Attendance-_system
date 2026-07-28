@@ -187,6 +187,8 @@
 %  MA981 template look — Orange-Book chapter style
 %=============================================================
 \usepackage{titlesec}
+\usepackage{adjustbox}          % fit oversized figures to the page
+\emergencystretch=2em           % reduce overfull lines from long unbreakable tokens
 
 \definecolor{ocre}{RGB}{199,84,32}         % chapter / rule orange
 \definecolor{covertitle}{RGB}{0,124,146}   % teal cover title
@@ -570,7 +572,7 @@ The database is designed to the third normal form (3NF) to eliminate update anom
 
 \begin{figure}[H]
 \centering
-\resizebox{\textwidth}{!}{%
+\begin{adjustbox}{max width=\linewidth, max totalheight=0.85\textheight, center}
 \begin{tikzpicture}[
   ent/.style={rectangle, draw=blue!60, fill=blue!8, rounded corners=4pt,
               font=\ttfamily\small, inner sep=8pt, text width=3.2cm},
@@ -768,7 +770,7 @@ The database is designed to the third normal form (3NF) to eliminate update anom
 \draw[rel] (staff.south) -- node[lbl,right]{} (sessions.east);
 
 \end{tikzpicture}
-}
+\end{adjustbox}
 \caption{Entity-Relationship Diagram for the attendance system database.}
 \label{fig:erd}
 \end{figure}
@@ -1021,7 +1023,7 @@ enrollments         & (student\_id, module\_id)  & Enrolment check \\
 The AI pipeline executes entirely on the on-premise server CPU using ONNXRuntime. Two models run in sequence for each image: YuNet for face detection and ArcFace MobileNet for identity recognition.
 
 \section{Face Detection: YuNet}
-YuNet is a lightweight CNN-based face detector trained on the WIDER FACE dataset and distributed by the OpenCV Zoo project as an ONNX model (\texttt{face\_detection\_yunet\_2023mar.onnx}, 373 KB). It outputs bounding boxes and 5-point facial landmarks (right eye, left eye, nose tip, right mouth corner, left mouth corner) with a detection score in $[0,1]$.
+YuNet is a lightweight CNN-based face detector trained on the WIDER FACE dataset and distributed by the OpenCV Zoo project as an ONNX model (\texttt{face\_\allowbreak detection\_\allowbreak yunet\_\allowbreak 2023mar.\allowbreak onnx}, 373 KB). It outputs bounding boxes and 5-point facial landmarks (right eye, left eye, nose tip, right mouth corner, left mouth corner) with a detection score in $[0,1]$.
 
 \textbf{Configuration:}
 \begin{itemize}
