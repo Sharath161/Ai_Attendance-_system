@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Face Recognition API — Demo</title>
+<style>
+  :root { --bg:#0f1220; --card:#1a1f36; --fg:#e8ecff; --mut:#9aa4d0; --acc:#5b7cfa; --ok:#33c27f; --bad:#e5556e; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; font-family:-apple-system,Segoe UI,Roboto,system-ui,sans-serif;
+         background:var(--bg); color:var(--fg); }
+  header { padding:16px; text-align:center; }
+  header h1 { font-size:18px; margin:0; }
+  header p { margin:4px 0 0; color:var(--mut); font-size:12px; }
+  main { max-width:520px; margin:0 auto; padding:0 14px 40px; }
+  .card { background:var(--card); border-radius:16px; padding:14px; margin-bottom:14px;
+          box-shadow:0 6px 24px rgba(0,0,0,.3); }
+  video, canvas { width:100%; border-radius:12px; background:#000; aspect-ratio:3/4; object-fit:cover; }
+  label { font-size:12px; color:var(--mut); display:block; margin:8px 2px 4px; }
+  input { width:100%; padding:11px; border-radius:10px; border:1px solid #2b3260;
+          background:#11152b; color:var(--fg); font-size:15px; }
+  .row { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  button { flex:1; min-width:120px; padding:13px; border:0; border-radius:11px; font-size:15px;
+           font-weight:600; color:#fff; background:var(--acc); cursor:pointer; }
+  button.ghost { background:#2b3260; }
+  button:disabled { opacity:.5; }
+  #out { margin-top:10px; padding:12px; border-radius:10px; background:#11152b; font-size:14px;
+         min-height:22px; white-space:pre-wrap; word-break:break-word; }
+  .pill { display:inline-block; padding:2px 9px; border-radius:20px; font-size:12px; font-weight:700; }
+  .pill.ok { background:rgba(51,194,127,.18); color:var(--ok); }
+  .pill.bad { background:rgba(229,85,110,.18); color:var(--bad); }
+  .mut { color:var(--mut); font-size:12px; }
+  a { color:var(--acc); }
+</style>
+</head>
+<body>
+<header>
+  <h1>🙂 Face Recognition API</h1>
+  <p>Cross-platform demo · runs on phone, tablet &amp; desktop · <a href="/docs">API docs</a></p>
+</header>
+<main>
+  <div class="card">
+    <video id="cam" autoplay playsinline muted></video>
+    <canvas id="cv" hidden></canvas>
+    <div class="row">
+      <button id="start">Start camera</button>
+      <button id="flip" class="ghost">Flip</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <label>Subject ID (for enrol)</label>
+    <input id="sid" placeholder="e.g. alice" autocomplete="off">
+    <label>Name (optional)</label>
+    <input id="sname" placeholder="e.g. Alice" autocomplete="off">
+    <div class="row">
+      <button id="enroll">Enrol (3 shots)</button>
+      <button id="identify" class="ghost">Identify</button>
+    </div>
+    <div id="out" class="mut">Start the camera, then enrol yourself and hit Identify.</div>
+  </div>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const cam = $("#cam"), cv = $("#cv"), out = $("#out");
+let stream = null, facing = "user";
+
+async function startCam() {
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:facing }, audio:false });
+    cam.srcObject = stream;
+  } catch (e) { out.textContent = "Camera error: " + e.message; }
+}
+function snap() {
+  const w = cam.videoWidth, h = cam.videoHeight;
+  cv.width = w; cv.height = h;
+  cv.getContext("2d").drawImage(cam, 0, 0, w, h);
+  return cv.toDataURL("image/jpeg", 0.9);   // data: URI (API strips the prefix)
+}
+async function post(path, body) {
+  const r = await fetch(path, { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(body) });
+  return { ok:r.ok, status:r.status, data: await r.json() };
+}
+
+$("#start").onclick = startCam;
+$("#flip").onclick = () => { facing = facing === "user" ? "environment" : "user"; startCam(); };
+
+$("#enroll").onclick = async () => {
+  const sid = $("#sid").value.trim();
+  if (!sid) { out.textContent = "Enter a Subject ID first."; return; }
+  if (!stream) { out.textContent = "Start the camera first."; return; }
+  out.textContent = "Capturing 3 shots…";
+  const images = [];
+  for (let i = 0; i < 3; i++) { images.push(snap()); await new Promise(r => setTimeout(r, 550)); }
+  const r = await post("/v1/enroll", { subject_id:sid, name:$("#sname").value.trim() || null, images });
+  out.innerHTML = r.ok
+    ? `<span class="pill ok">ENROLLED</span> ${sid} — ${r.data.embeddings_added} face(s) added, ${r.data.faces_rejected} rejected.`
+    : `<span class="pill bad">ERROR ${r.status}</span> ${r.data.error?.message || JSON.stringify(r.data)}`;
+};
+
+$("#identify").onclick = async () => {
+  if (!stream) { out.textContent = "Start the camera first."; return; }
+  out.textContent = "Identifying…";
+  const r = await post("/v1/identify", { image: snap() });
+  const d = r.data;
+  if (!r.ok) { out.innerHTML = `<span class="pill bad">ERROR ${r.status}</span> ${d.error?.message||""}`; return; }
+  if (d.status === "matched") {
+    const m = d.match;
+    out.innerHTML = `<span class="pill ok">MATCH</span> <b>${m.name || m.subject_id}</b> `
+      + `<span class="mut">(${m.subject_id}) · score ${m.score.toFixed(3)} · thr ${d.threshold}</span>`;
+  } else {
+    const top = (d.candidates||[]).slice(0,3).map(c => `${c.subject_id}: ${c.score.toFixed(3)}`).join("  ·  ");
+    out.innerHTML = `<span class="pill bad">${d.status.toUpperCase()}</span> `
+      + (top ? `<div class="mut" style="margin-top:6px">closest — ${top}</div>` : "");
+  }
+};
+</script>
+</body>
+</html>

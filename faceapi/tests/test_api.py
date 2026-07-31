@@ -57,6 +57,21 @@ def test_enroll_and_identify(client, data):
     assert r["status"] == "matched" and r["match"]["subject_id"] == "S5"
 
 
+def test_json_base64_identify(client, data):
+    import base64
+    jpg = _jpg(data.images[data.target == 5][9])
+    b64 = "data:image/jpeg;base64," + base64.b64encode(jpg).decode()
+    r = client.post("/v1/identify", json={"image": b64}).json()
+    assert r["status"] == "matched" and r["match"]["subject_id"] == "S5"
+
+
+def test_metrics_and_headers(client, data):
+    r = client.get("/health")
+    assert "X-Request-ID" in r.headers and "X-Process-Time-ms" in r.headers
+    m = client.get("/metrics")
+    assert m.status_code == 200 and "faceapi_requests_total" in m.text
+
+
 def test_embed_dim(client, data):
     q = {"image": ("q.jpg", io.BytesIO(_jpg(data.images[data.target == 5][0])), "image/jpeg")}
     e = client.post("/embed", files=q).json()

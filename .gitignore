@@ -34,6 +34,10 @@ work/models/
 work/attendance.db
 work/attendance.db-shm
 work/attendance.db-wal
+# faceapi subject gallery (biometric embeddings):
+work/faceapi.db
+work/faceapi.db-shm
+work/faceapi.db-wal
 
 # ── LaTeX build artefacts ─────────────────────────────────────────────────────
 dissertation/*.aux

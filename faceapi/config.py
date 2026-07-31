@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     # Comma-separated API keys accepted in the X-API-Key header.
     # Empty => auth disabled (dev only).
     api_keys: str = ""
+    # Comma-separated allowed CORS origins; empty => "*" (lock down in production).
+    cors_origins: str = ""
 
     model_config = SettingsConfigDict(env_prefix="FACEAPI_", env_file=".env",
                                       env_file_encoding="utf-8", extra="ignore")

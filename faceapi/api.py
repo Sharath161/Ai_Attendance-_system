@@ -1,26 +1,41 @@
-"""Production-grade, domain-agnostic Face Recognition API.
+"""Production-grade, cross-platform Face Recognition API.
+
+Callable from anywhere — web (fetch/XHR), mobile (Flutter/Swift/Kotlin),
+desktop, curl — via two interchangeable input styles:
+
+  * multipart/form-data  (browser <form>, FormData, MultipartRequest)
+  * application/json      with base64-encoded images  (easy for mobile/web)
 
 Endpoints
-    POST /enroll          multipart: subject_id, name?, metadata?, images[]  -> EnrollResponse
-    POST /identify        multipart: image                                    -> IdentifyResponse (1:N)
-    POST /verify          multipart: subject_id, image                        -> VerifyResponse   (1:1)
-    POST /embed           multipart: image                                    -> EmbedResponse
-    GET  /subjects        list enrolled subjects
-    DELETE /subjects/{id} remove a subject
-    GET  /models          active model + runtime profile
-    GET  /health          liveness + gallery stats
+    POST /enroll                subject_id,name?,metadata?,images[]        (multipart)
+    POST /v1/enroll             {subject_id,name?,metadata?,images:[b64]}  (json)
+    POST /identify | /v1/identify        image / {image:b64}      -> 1:N
+    POST /verify   | /v1/verify          subject_id,image / json  -> 1:1
+    POST /embed    | /v1/embed           image / {image:b64}      -> 512-d
+    GET  /subjects · DELETE /subjects/{id} · GET /models · GET /health
+    GET  /metrics   (Prometheus text)   ·   GET /   (live web demo)
 
-Auth: if FACEAPI_API_KEYS is set (comma-separated), all non-health routes
-require a matching `X-API-Key` header.
+Auth: if FACEAPI_API_KEYS is set, non-public routes need a matching X-API-Key.
+CORS is open by default (configure FACEAPI_CORS_ORIGINS in production).
 """
 from __future__ import annotations
 
+import base64
+import binascii
 import json
+import time
+import uuid
+from collections import defaultdict
+from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Annotated
 
 import numpy as np
 from fastapi import (Depends, FastAPI, File, Form, Header, HTTPException,
-                     UploadFile, status)
+                     Request, UploadFile, status)
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
+from pydantic import BaseModel
 
 from faceapi import matching
 from faceapi.config import Settings, get_settings
@@ -30,18 +45,20 @@ from faceapi.schemas import (BBox, Candidate, EmbedResponse, EnrollResponse,
                              VerifyResponse)
 from faceapi.store import SubjectStore
 
-from contextlib import asynccontextmanager
+_WEB = Path(__file__).resolve().parent / "web" / "index.html"
+
+# ── lightweight metrics ────────────────────────────────────────────────────────
+_METRICS = {"requests": defaultdict(int), "errors": defaultdict(int),
+            "latency_sum": defaultdict(float)}
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     s = get_settings()
     app.state.engine = FaceEngine(
-        detection_model=s.detection_model_path,
-        recognition_model=s.recognition_model(),
+        detection_model=s.detection_model_path, recognition_model=s.recognition_model(),
         detection_score_threshold=s.detection_score_threshold,
-        intra_op_threads=s.intra_op_threads,
-        enable_tta=s.enable_tta)
+        intra_op_threads=s.intra_op_threads, enable_tta=s.enable_tta)
     app.state.store = SubjectStore(s.db_path)
     yield
     try:
@@ -51,10 +68,42 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Face Recognition API", version="1.0", lifespan=lifespan,
-              description="Domain-agnostic face enrolment / verification / identification.")
+              description="Cross-platform face enrolment / verification / identification.")
+
+_settings = get_settings()
+_cors = _settings.cors_origins.split(",") if _settings.cors_origins else ["*"]
+app.add_middleware(CORSMiddleware, allow_origins=[o.strip() for o in _cors],
+                   allow_methods=["*"], allow_headers=["*"])
 
 
-# ── auth ──────────────────────────────────────────────────────────────────────
+@app.middleware("http")
+async def observability(request: Request, call_next):
+    rid = request.headers.get("x-request-id", uuid.uuid4().hex[:12])
+    t0 = time.perf_counter()
+    try:
+        resp = await call_next(request)
+    except Exception:
+        _METRICS["errors"][request.url.path] += 1
+        raise
+    dt = time.perf_counter() - t0
+    ep = request.url.path
+    _METRICS["requests"][ep] += 1
+    _METRICS["latency_sum"][ep] += dt
+    if resp.status_code >= 400:
+        _METRICS["errors"][ep] += 1
+    resp.headers["X-Request-ID"] = rid
+    resp.headers["X-Process-Time-ms"] = f"{dt*1000:.1f}"
+    return resp
+
+
+@app.exception_handler(HTTPException)
+async def http_error(request: Request, exc: HTTPException):
+    return JSONResponse(status_code=exc.status_code,
+                        content={"error": {"code": exc.status_code, "message": exc.detail,
+                                           "path": request.url.path}})
+
+
+# ── auth + accessors ───────────────────────────────────────────────────────────
 def require_key(x_api_key: Annotated[str | None, Header()] = None,
                 settings: Settings = Depends(get_settings)) -> None:
     keys = settings.api_key_set()
@@ -66,53 +115,35 @@ def engine() -> FaceEngine: return app.state.engine
 def store() -> SubjectStore: return app.state.store
 
 
-async def _read(image: UploadFile, settings: Settings) -> np.ndarray:
-    data = await image.read()
+def _decode_frame(data: bytes, settings: Settings) -> np.ndarray:
     if len(data) > settings.max_upload_bytes:
         raise HTTPException(413, "Image too large")
-    frame = app.state.engine.decode(data)
+    frame = engine().decode(data)
     if frame is None:
         raise HTTPException(400, "Could not decode image")
     return frame
 
 
-# ── enrol ─────────────────────────────────────────────────────────────────────
-@app.post("/enroll", response_model=EnrollResponse, dependencies=[Depends(require_key)])
-async def enroll(
-    subject_id: str = Form(...),
-    name: str | None = Form(None),
-    metadata: str | None = Form(None),
-    images: list[UploadFile] = File(...),
-    settings: Settings = Depends(get_settings),
-) -> EnrollResponse:
-    meta = None
-    if metadata:
-        try: meta = json.loads(metadata)
-        except Exception: raise HTTPException(400, "metadata must be JSON")
-
-    vectors, rejected = [], 0
-    for img in images:
-        frame = await _read(img, settings)
-        dets = engine().detect(frame, embed=True, max_faces=settings.max_faces)
-        if len(dets) == 1 and dets[0].embedding is not None:
-            vectors.append(dets[0].embedding)
-        else:
-            rejected += 1
-    if not vectors:
-        raise HTTPException(422, "No usable single-face images (each photo needs exactly one face)")
-
-    store().upsert_subject(subject_id, name, meta)
-    added = store().add_embeddings(subject_id, vectors, engine().recognition_model_name)
-    existing = store().subject_vectors(subject_id)
-    total = 0 if existing is None else len(existing)
-    return EnrollResponse(subject_id=subject_id, name=name, embeddings_added=added,
-                          total_embeddings=total, faces_rejected=rejected)
+def _b64_to_frame(b64: str, settings: Settings) -> np.ndarray:
+    if "," in b64[:64]:                      # strip data: URI prefix
+        b64 = b64.split(",", 1)[1]
+    try:
+        return _decode_frame(base64.b64decode(b64), settings)
+    except (binascii.Error, ValueError):
+        raise HTTPException(400, "Invalid base64 image")
 
 
-# ── identify (1:N) ────────────────────────────────────────────────────────────
-@app.post("/identify", response_model=IdentifyResponse, dependencies=[Depends(require_key)])
-async def identify(image: UploadFile = File(...), settings: Settings = Depends(get_settings)):
-    frame = await _read(image, settings)
+# ── core logic (shared by multipart + json routes) ────────────────────────────
+def _do_embed(frame, settings) -> EmbedResponse:
+    dets = engine().detect(frame, embed=True, max_faces=settings.max_faces)
+    if not dets:
+        return EmbedResponse(face_count=0, embedding=None, model=engine().recognition_model_name, dim=512)
+    d = dets[0]
+    return EmbedResponse(face_count=len(dets), embedding=[round(float(x), 6) for x in d.embedding],
+                         face_box=BBox(**d.bbox), model=engine().recognition_model_name, dim=512)
+
+
+def _do_identify(frame, settings) -> IdentifyResponse:
     dets = engine().detect(frame, embed=True, max_faces=settings.max_faces)
     thr = settings.match_threshold
     if not dets:
@@ -120,17 +151,13 @@ async def identify(image: UploadFile = File(...), settings: Settings = Depends(g
     if len(dets) > 1:
         return IdentifyResponse(status="multiple_faces", face_box=BBox(**dets[0].bbox), threshold=thr)
     res = matching.identify(dets[0].embedding, store().gallery(), thr)
-    cands = [Candidate(**c) for c in res["candidates"]]
     match = Candidate(**res["match"]) if res["match"] else None
     return IdentifyResponse(status="matched" if match else "no_match", match=match,
-                            candidates=cands, face_box=BBox(**dets[0].bbox), threshold=thr)
+                            candidates=[Candidate(**c) for c in res["candidates"]],
+                            face_box=BBox(**dets[0].bbox), threshold=thr)
 
 
-# ── verify (1:1) ──────────────────────────────────────────────────────────────
-@app.post("/verify", response_model=VerifyResponse, dependencies=[Depends(require_key)])
-async def verify(subject_id: str = Form(...), image: UploadFile = File(...),
-                 settings: Settings = Depends(get_settings)):
-    frame = await _read(image, settings)
+def _do_verify(subject_id, frame, settings) -> VerifyResponse:
     thr = settings.match_threshold
     mat = store().subject_vectors(subject_id)
     if mat is None:
@@ -145,16 +172,89 @@ async def verify(subject_id: str = Form(...), image: UploadFile = File(...),
                           is_match=r["is_match"], score=round(r["score"], 4), threshold=thr)
 
 
-# ── embed ─────────────────────────────────────────────────────────────────────
+def _do_enroll(subject_id, name, meta, frames, settings) -> EnrollResponse:
+    vectors, rejected = [], 0
+    for frame in frames:
+        dets = engine().detect(frame, embed=True, max_faces=settings.max_faces)
+        if len(dets) == 1 and dets[0].embedding is not None:
+            vectors.append(dets[0].embedding)
+        else:
+            rejected += 1
+    if not vectors:
+        raise HTTPException(422, "No usable single-face images (each photo needs exactly one face)")
+    store().upsert_subject(subject_id, name, meta)
+    added = store().add_embeddings(subject_id, vectors, engine().recognition_model_name)
+    existing = store().subject_vectors(subject_id)
+    return EnrollResponse(subject_id=subject_id, name=name, embeddings_added=added,
+                          total_embeddings=0 if existing is None else len(existing),
+                          faces_rejected=rejected)
+
+
+# ── JSON request bodies ────────────────────────────────────────────────────────
+class ImageBody(BaseModel):
+    image: str                       # base64 (optionally data: URI)
+
+
+class VerifyBody(ImageBody):
+    subject_id: str
+
+
+class EnrollBody(BaseModel):
+    subject_id: str
+    name: str | None = None
+    metadata: dict | None = None
+    images: list[str]                # base64 list
+
+
+# ── multipart routes ───────────────────────────────────────────────────────────
+@app.post("/enroll", response_model=EnrollResponse, dependencies=[Depends(require_key)])
+async def enroll(subject_id: str = Form(...), name: str | None = Form(None),
+                 metadata: str | None = Form(None), images: list[UploadFile] = File(...),
+                 settings: Settings = Depends(get_settings)):
+    meta = None
+    if metadata:
+        try: meta = json.loads(metadata)
+        except Exception: raise HTTPException(400, "metadata must be JSON")
+    frames = [_decode_frame(await i.read(), settings) for i in images]
+    return _do_enroll(subject_id, name, meta, frames, settings)
+
+
+@app.post("/identify", response_model=IdentifyResponse, dependencies=[Depends(require_key)])
+async def identify(image: UploadFile = File(...), settings: Settings = Depends(get_settings)):
+    return _do_identify(_decode_frame(await image.read(), settings), settings)
+
+
+@app.post("/verify", response_model=VerifyResponse, dependencies=[Depends(require_key)])
+async def verify(subject_id: str = Form(...), image: UploadFile = File(...),
+                 settings: Settings = Depends(get_settings)):
+    return _do_verify(subject_id, _decode_frame(await image.read(), settings), settings)
+
+
 @app.post("/embed", response_model=EmbedResponse, dependencies=[Depends(require_key)])
 async def embed(image: UploadFile = File(...), settings: Settings = Depends(get_settings)):
-    frame = await _read(image, settings)
-    dets = engine().detect(frame, embed=True, max_faces=settings.max_faces)
-    if not dets:
-        return EmbedResponse(face_count=0, embedding=None, model=engine().recognition_model_name, dim=512)
-    d = dets[0]
-    return EmbedResponse(face_count=len(dets), embedding=[round(float(x), 6) for x in d.embedding],
-                         face_box=BBox(**d.bbox), model=engine().recognition_model_name, dim=512)
+    return _do_embed(_decode_frame(await image.read(), settings), settings)
+
+
+# ── JSON (base64) routes — mobile/web friendly ────────────────────────────────
+@app.post("/v1/enroll", response_model=EnrollResponse, dependencies=[Depends(require_key)])
+async def enroll_json(body: EnrollBody, settings: Settings = Depends(get_settings)):
+    frames = [_b64_to_frame(b, settings) for b in body.images]
+    return _do_enroll(body.subject_id, body.name, body.metadata, frames, settings)
+
+
+@app.post("/v1/identify", response_model=IdentifyResponse, dependencies=[Depends(require_key)])
+async def identify_json(body: ImageBody, settings: Settings = Depends(get_settings)):
+    return _do_identify(_b64_to_frame(body.image, settings), settings)
+
+
+@app.post("/v1/verify", response_model=VerifyResponse, dependencies=[Depends(require_key)])
+async def verify_json(body: VerifyBody, settings: Settings = Depends(get_settings)):
+    return _do_verify(body.subject_id, _b64_to_frame(body.image, settings), settings)
+
+
+@app.post("/v1/embed", response_model=EmbedResponse, dependencies=[Depends(require_key)])
+async def embed_json(body: ImageBody, settings: Settings = Depends(get_settings)):
+    return _do_embed(_b64_to_frame(body.image, settings), settings)
 
 
 # ── management ────────────────────────────────────────────────────────────────
@@ -184,3 +284,23 @@ async def health(settings: Settings = Depends(get_settings)):
     return HealthResponse(status="ok", model=engine().recognition_model_name,
                           int8=settings.use_int8, tta=settings.enable_tta,
                           threshold=settings.match_threshold, subjects=subs, embeddings=embs)
+
+
+@app.get("/metrics", response_class=PlainTextResponse)
+async def metrics():
+    lines = ["# HELP faceapi_requests_total Requests per endpoint",
+             "# TYPE faceapi_requests_total counter"]
+    for ep, n in _METRICS["requests"].items():
+        lines.append(f'faceapi_requests_total{{endpoint="{ep}"}} {n}')
+    for ep, n in _METRICS["errors"].items():
+        lines.append(f'faceapi_errors_total{{endpoint="{ep}"}} {n}')
+    for ep, s in _METRICS["latency_sum"].items():
+        lines.append(f'faceapi_request_duration_seconds_sum{{endpoint="{ep}"}} {s:.4f}')
+    return "\n".join(lines) + "\n"
+
+
+@app.get("/", include_in_schema=False)
+async def web_demo():
+    if _WEB.exists():
+        return FileResponse(_WEB, media_type="text/html")
+    return JSONResponse({"service": "Face Recognition API", "docs": "/docs"})

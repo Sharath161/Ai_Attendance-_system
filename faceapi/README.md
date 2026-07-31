@@ -68,8 +68,63 @@ docker build -f faceapi/Dockerfile -t faceapi .
 docker run -p 8080:8080 -e FACEAPI_API_KEYS=changeme faceapi
 ```
 
+## Cross-platform — works everywhere
+The service is a plain HTTP API with **CORS enabled** and two interchangeable input
+styles, so it drives the same from any client:
+
+- **multipart/form-data** — browser `<form>`, `FormData`, Flutter `MultipartRequest`
+- **application/json + base64** (`/v1/*`) — easiest for mobile/web/desktop
+
+A ready-made **live demo** (camera capture + enrol + identify, responsive for
+**phone / tablet / desktop**) is served at **`GET /`**; interactive API docs at `/docs`.
+
+**Web / JavaScript**
+```js
+const b64 = canvas.toDataURL("image/jpeg");            // data: URI ok
+const r = await fetch("/v1/identify", {
+  method: "POST", headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ image: b64 })
+});
+const { status, match } = await r.json();
+```
+
+**Flutter / Dart (mobile)**
+```dart
+final b64 = base64Encode(await File(path).readAsBytes());
+final r = await http.post(Uri.parse("$api/v1/identify"),
+  headers: {"Content-Type": "application/json", "X-API-Key": key},
+  body: jsonEncode({"image": b64}));
+```
+
+**Swift / iOS**
+```swift
+let b64 = imageData.base64EncodedString()
+var req = URLRequest(url: URL(string: "\(api)/v1/identify")!)
+req.httpMethod = "POST"; req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+req.httpBody = try JSONSerialization.data(withJSONObject: ["image": b64])
+```
+
+**curl / desktop / CI**
+```bash
+curl -F image=@query.jpg http://localhost:8080/identify           # multipart
+curl -H 'Content-Type: application/json' \
+     -d "{\"image\":\"$(base64 -w0 query.jpg)\"}" \
+     http://localhost:8080/v1/identify                            # json
+```
+
+Generate typed client SDKs for any language from the OpenAPI schema at
+`/openapi.json` (e.g. `openapi-generator` for Kotlin/Swift/TypeScript/Dart).
+
+## Observability
+- Every response carries `X-Request-ID` and `X-Process-Time-ms`.
+- `GET /metrics` exposes Prometheus counters (`faceapi_requests_total`,
+  `faceapi_errors_total`, `faceapi_request_duration_seconds_sum`).
+- Consistent error envelope: `{"error": {"code", "message", "path"}}`.
+
+See `MODEL_CARD.md` for performance, limitations, and ethical/privacy guidance.
+
 ## Tests
 ```bash
-python -m pytest faceapi/tests -q      # in-process API coverage
+python -m pytest faceapi/tests -q      # in-process API coverage (multipart + json + metrics)
 python -m faceapi.smoke                # end-to-end demo on Olivetti faces
 ```
