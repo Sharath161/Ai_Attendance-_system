@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1220">
+<link rel="manifest" href="/manifest.json">
+<title>Attendance</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+<div id="app">
+  <!-- ── LOGIN ─────────────────────────────────────────────────────────── -->
+  <section id="view-login" class="view active">
+    <div class="auth-wrap">
+      <div class="brand">
+        <div class="logo">◉</div>
+        <h1>Attendance</h1>
+        <p class="sub">Face recognition check-in</p>
+      </div>
+      <form id="loginForm" class="card">
+        <label>Email</label>
+        <input id="email" type="email" autocomplete="username" placeholder="you@example.com" required>
+        <label>Password</label>
+        <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" required>
+        <button class="primary" type="submit">Sign in</button>
+        <div id="loginMsg" class="msg"></div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ── APP SHELL ─────────────────────────────────────────────────────── -->
+  <section id="view-main" class="view">
+    <header class="topbar">
+      <div>
+        <strong id="userName">—</strong>
+        <span id="userRole" class="badge"></span>
+      </div>
+      <button id="logout" class="ghost small">Sign out</button>
+    </header>
+
+    <main id="content"></main>
+
+    <nav id="tabbar" class="tabbar"></nav>
+  </section>
+</div>
+
+<!-- camera modal -->
+<div id="camModal" class="modal">
+  <div class="modal-card">
+    <h3 id="camTitle">Camera</h3>
+    <video id="cam" autoplay playsinline muted></video>
+    <canvas id="cv" hidden></canvas>
+    <div id="camMsg" class="msg"></div>
+    <div class="row">
+      <button id="camAction" class="primary">Capture</button>
+      <button id="camFlip" class="ghost">Flip</button>
+      <button id="camClose" class="ghost">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="/app.js"></script>
+</body>
+</html>
