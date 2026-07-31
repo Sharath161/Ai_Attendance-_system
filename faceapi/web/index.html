@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b0e1a">
+<meta name="description" content="Face recognition API that works from a single enrolment photo and runs on low-cost hardware. 97.5% top-1 accuracy, 13.6 MB model, ~10 ms per image.">
+<title>FaceAPI — face recognition that works on low data</title>
+<link rel="icon" href="/icon.svg">
+<link rel="stylesheet" href="/css/site.css">
+</head>
+<body>
+
+<header class="nav">
+  <a class="logo" href="/"><span class="mark">◉</span> FaceAPI</a>
+  <nav>
+    <a href="#how">How it works</a>
+    <a href="#benchmarks">Benchmarks</a>
+    <a href="#built">Built with it</a>
+    <a href="/docs">API docs</a>
+  </nav>
+  <a class="btn small" href="/demo">Live demo</a>
+</header>
+
+<!-- ── HERO ─────────────────────────────────────────────────────────────── -->
+<section class="hero">
+  <div class="wrap">
+    <div class="tag">Face recognition API</div>
+    <h1>Recognise anyone from<br><span class="grad">a single photo.</span></h1>
+    <p class="lede">
+      A production-ready face recognition API built for <strong>low data</strong> and
+      <strong>low-cost hardware</strong>. One enrolment photo is enough — no training,
+      no GPU, no per-face fine-tuning.
+    </p>
+    <div class="cta">
+      <a class="btn" href="/demo">Try the live demo</a>
+      <a class="btn ghost" href="#start">Get started</a>
+    </div>
+
+    <div class="stats">
+      <div><b>97.5%</b><span>top-1 from 1 photo</span></div>
+      <div><b>98.5%</b><span>from 2 photos</span></div>
+      <div><b>~10 ms</b><span>per image, CPU</span></div>
+      <div><b>13.6 MB</b><span>model footprint</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── PROBLEM / VALUE ──────────────────────────────────────────────────── -->
+<section class="band">
+  <div class="wrap grid-3">
+    <article>
+      <div class="ic">🪄</div>
+      <h3>Works on low data</h3>
+      <p>Most face systems need dozens of images per person. This one hits
+         <strong>97.5% top-1</strong> across 120 identities from a
+         <strong>single</strong> enrolment photo, and 98.5% from two.</p>
+    </article>
+    <article>
+      <div class="ic">🥔</div>
+      <h3>Runs on cheap hardware</h3>
+      <p>A 13.6 MB model on plain CPU — no GPU required. Thread pinning,
+         detection downscaling and an optional INT8 build target
+         Raspberry-Pi-class devices.</p>
+    </article>
+    <article>
+      <div class="ic">🌍</div>
+      <h3>Works everywhere</h3>
+      <p>Plain HTTP with CORS. Multipart <em>or</em> JSON+base64, so the same API
+         drives web, iOS, Android and desktop clients with no SDK lock-in.</p>
+    </article>
+  </div>
+</section>
+
+<!-- ── HOW IT WORKS ─────────────────────────────────────────────────────── -->
+<section id="how" class="wrap section">
+  <h2>Three calls. That's the whole API.</h2>
+  <p class="sub">Enrol a subject, then identify or verify. Everything else is optional.</p>
+
+  <div class="steps">
+    <div class="step">
+      <span class="n">1</span>
+      <div><h4>Enrol</h4><p>Send one or more photos with a subject ID. The service
+      detects, aligns and stores 512-d embeddings.</p></div>
+    </div>
+    <div class="step">
+      <span class="n">2</span>
+      <div><h4>Identify</h4><p>Send a photo, get the matching subject back with a
+      confidence score and ranked candidates (1:N).</p></div>
+    </div>
+    <div class="step">
+      <span class="n">3</span>
+      <div><h4>Verify</h4><p>Or check a photo against one known subject and get a
+      yes/no with a score (1:1).</p></div>
+    </div>
+  </div>
+
+  <div class="code">
+    <div class="tabs">
+      <button class="on" data-tab="curl">curl</button>
+      <button data-tab="js">JavaScript</button>
+      <button data-tab="py">Python</button>
+      <button data-tab="dart">Flutter</button>
+    </div>
+<pre data-pane="curl" class="on"><code><span class="c"># enrol a subject from one photo</span>
+curl -F subject_id=alice -F name=Alice -F images=@alice.jpg \
+     http://localhost:8080/enroll
+
+<span class="c"># identify an unknown face</span>
+curl -F image=@query.jpg http://localhost:8080/identify
+<span class="c"># → {"status":"matched","match":{"subject_id":"alice","score":0.86}}</span></code></pre>
+
+<pre data-pane="js"><code><span class="k">const</span> b64 = canvas.<span class="f">toDataURL</span>(<span class="s">"image/jpeg"</span>);
+
+<span class="k">const</span> res = <span class="k">await</span> <span class="f">fetch</span>(<span class="s">"/v1/identify"</span>, {
+  method: <span class="s">"POST"</span>,
+  headers: { <span class="s">"Content-Type"</span>: <span class="s">"application/json"</span> },
+  body: <span class="f">JSON.stringify</span>({ image: b64 })
+});
+
+<span class="k">const</span> { status, match } = <span class="k">await</span> res.<span class="f">json</span>();
+<span class="c">// match.subject_id, match.score</span></code></pre>
+
+<pre data-pane="py"><code><span class="k">import</span> requests
+
+<span class="c"># enrol</span>
+requests.<span class="f">post</span>(<span class="s">"http://localhost:8080/enroll"</span>,
+    data={<span class="s">"subject_id"</span>: <span class="s">"alice"</span>, <span class="s">"name"</span>: <span class="s">"Alice"</span>},
+    files=[(<span class="s">"images"</span>, <span class="f">open</span>(<span class="s">"alice.jpg"</span>, <span class="s">"rb"</span>))])
+
+<span class="c"># identify</span>
+r = requests.<span class="f">post</span>(<span class="s">"http://localhost:8080/identify"</span>,
+    files={<span class="s">"image"</span>: <span class="f">open</span>(<span class="s">"query.jpg"</span>, <span class="s">"rb"</span>)})
+<span class="f">print</span>(r.<span class="f">json</span>()[<span class="s">"match"</span>])</code></pre>
+
+<pre data-pane="dart"><code><span class="k">final</span> b64 = <span class="f">base64Encode</span>(<span class="k">await</span> File(path).<span class="f">readAsBytes</span>());
+
+<span class="k">final</span> r = <span class="k">await</span> http.<span class="f">post</span>(
+  Uri.<span class="f">parse</span>(<span class="s">"$api/v1/identify"</span>),
+  headers: {<span class="s">"Content-Type"</span>: <span class="s">"application/json"</span>},
+  body: <span class="f">jsonEncode</span>({<span class="s">"image"</span>: b64}),
+);</code></pre>
+  </div>
+</section>
+
+<!-- ── BENCHMARKS ───────────────────────────────────────────────────────── -->
+<section id="benchmarks" class="band">
+  <div class="wrap section">
+    <h2>Measured, not claimed.</h2>
+    <p class="sub">LFW · 120 enrolled identities · fixed 5-photo test set per identity ·
+       114 unknown probes · open-set threshold at 1% false-match rate.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Enrolment photos</th><th>Top-1 accuracy</th>
+          <th>Unknown-face rejection<span class="hint">DIR @ FAR=1%</span></th>
+        </tr></thead>
+        <tbody>
+          <tr><td><b>1 photo</b></td><td>97.5%</td><td>97.0%</td></tr>
+          <tr class="hi"><td><b>2 photos</b></td><td>98.5%</td><td>97.7%</td></tr>
+          <tr><td><b>5 photos</b></td><td>98.5%</td><td>98.2%</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="grid-3 pad">
+      <div class="mini"><b>~10 ms</b><span>end-to-end per image on desktop CPU</span></div>
+      <div class="mini"><b>&lt; 10 ms</b><span>matching at 200,000 enrolled prototypes</span></div>
+      <div class="mini"><b>512-d</b><span>L2-normalised ArcFace embeddings</span></div>
+    </div>
+
+    <p class="note">Pipeline: YuNet detection (5-point landmarks) → ArcFace embedding →
+      multi-prototype cosine matching. Full protocol, limitations and ethical guidance
+      in the <a href="/docs">API docs</a> and model card.</p>
+  </div>
+</section>
+
+<!-- ── BUILT WITH IT ────────────────────────────────────────────────────── -->
+<section id="built" class="wrap section">
+  <div class="tag mid">Built with FaceAPI</div>
+  <h2>A real product, running on this API.</h2>
+  <p class="sub">We built a complete university attendance system on top of it — the API
+     handles every face operation over HTTP, so the application owns zero ML code.</p>
+
+  <div class="showcase">
+    <div class="show-body">
+      <h3>Smart Attendance</h3>
+      <p>Students enrol their face from a phone and check in by looking at the camera.
+         Teachers open sessions and watch attendance fill in live. Admins get reports
+         and CSV exports.</p>
+      <ul class="ticks">
+        <li>Face check-in with duplicate protection and confidence gating</li>
+        <li>Installable PWA — works on phone, tablet and desktop</li>
+        <li>Student / teacher / admin roles with JWT auth</li>
+        <li>Kiosk mode for a shared classroom device</li>
+      </ul>
+      <div class="cta">
+        <a class="btn" href="http://localhost:8000" target="_blank" rel="noopener">Open the attendance app</a>
+      </div>
+      <p class="tiny">Runs as a separate service on port 8000 and calls this API for
+         every enrol / identify request.</p>
+    </div>
+    <div class="show-art">
+      <div class="phone">
+        <div class="scr">
+          <div class="scr-top">Check in</div>
+          <div class="face"></div>
+          <div class="ok-pill">✓ Marked present</div>
+          <div class="scr-row"><span>CS101 — Computing</span><b>100%</b></div>
+          <div class="scr-bar"><i></i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arch">
+    <div class="box">Your app<span>web · mobile · kiosk</span></div>
+    <div class="arrow">HTTP<br>JSON / multipart</div>
+    <div class="box acc">FaceAPI<span>enrol · identify · verify</span></div>
+  </div>
+</section>
+
+<!-- ── GET STARTED ──────────────────────────────────────────────────────── -->
+<section id="start" class="band">
+  <div class="wrap section center">
+    <h2>Run it in under a minute.</h2>
+    <p class="sub">Self-hosted. No account, no API bill, no data leaving your machine.</p>
+<pre class="start"><code>pip install -r requirements.txt
+python -m faceapi.download_models
+python -m faceapi.serve</code></pre>
+    <div class="cta center">
+      <a class="btn" href="/docs">Read the API docs</a>
+      <a class="btn ghost" href="/demo">Try the demo</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot">
+    <div><span class="mark">◉</span> <strong>FaceAPI</strong>
+      <p class="tiny">Face recognition for low-data, low-hardware deployments.</p></div>
+    <div class="links">
+      <a href="/docs">API reference</a>
+      <a href="/demo">Live demo</a>
+      <a href="/health">Service health</a>
+      <a href="/metrics">Metrics</a>
+    </div>
+  </div>
+  <p class="tiny center legal">Biometric data is personal data — obtain consent and follow
+     your local regulations. See the model card for limitations and intended use.</p>
+</footer>
+
+<script src="/js/site.js"></script>
+</body>
+</html>

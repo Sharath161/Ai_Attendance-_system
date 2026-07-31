@@ -1,20 +1,63 @@
-# Runtime data (PII — never commit)
-work/
-.env
-*.db
-
-# Python
+# ── Python ────────────────────────────────────────────────────────────────────
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
-.venv/
-venv/
+*.py[cod]
 *.egg-info/
 dist/
 build/
+.venv/
+venv/
+env/
 
-# LaTeX build artefacts
+# ── Environment ───────────────────────────────────────────────────────────────
+.env
+!.env.example
+
+# ── Models (re-fetch: python -m faceapi.download_models) ──────────────────────
+work/models/
+
+# ── Biometric data — NEVER commit ─────────────────────────────────────────────
+# subject gallery (face embedding templates) and any local test photos
+work/faceapi.db
+work/attendance.db
+work/faceapi.db-shm
+work/faceapi.db-wal
+work/attendance.db-shm
+work/attendance.db-wal
+work/logs/
+work/photos/
+work/my_people/
+
+# ── Benchmarks: keep reports/figures, ignore scratch ──────────────────────────
+work/tmp/
+
+# ── Test / tooling ────────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ── OS / IDE ──────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
+*.swp
+
+# ── LaTeX build artefacts ─────────────────────────────────────────────────────
+dissertation/*.aux
+dissertation/*.log
+dissertation/*.out
+dissertation/*.toc
+dissertation/*.lof
+dissertation/*.lot
+dissertation/*.synctex.gz
+
+# ── Retained from the prototype backend ───────────────────────────────────────
+work/
+*.db
+*.pyc
+*.pyo
+*.pyd
 02_dissertation/*.aux
 02_dissertation/*.log
 02_dissertation/*.toc
@@ -24,18 +67,8 @@ build/
 02_dissertation/*.synctex.gz
 02_dissertation/diagrams.aux
 02_dissertation/diagrams.log
-
-# Jupyter checkpoints
 .ipynb_checkpoints/
 01_notebook/.ipynb_checkpoints/
-
-# UI (excluded per project scope)
 03_ui/
 api/
-
-# Docker override
 *.override.yml
-
-# OS
-.DS_Store
-Thumbs.db
