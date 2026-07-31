@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Face Recognition API — Demo</title>
+<link rel="stylesheet" href="/css/demo.css">
+</head>
+<body>
+<header>
+  <h1>🙂 Face Recognition API</h1>
+  <p>Cross-platform demo · runs on phone, tablet &amp; desktop · <a href="/docs">API docs</a></p>
+</header>
+<main>
+  <div class="card">
+    <video id="cam" autoplay playsinline muted></video>
+    <canvas id="cv" hidden></canvas>
+    <div class="row">
+      <button id="start">Start camera</button>
+      <button id="flip" class="ghost">Flip</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <label>Subject ID (for enrol)</label>
+    <input id="sid" placeholder="e.g. alice" autocomplete="off">
+    <label>Name (optional)</label>
+    <input id="sname" placeholder="e.g. Alice" autocomplete="off">
+    <div class="row">
+      <button id="enroll">Enrol (3 shots)</button>
+      <button id="identify" class="ghost">Identify</button>
+    </div>
+    <div id="out" class="mut">Start the camera, then enrol yourself and hit Identify.</div>
+  </div>
+</main>
+
+<script src="/js/demo.js"></script>
+</body>
+</html>

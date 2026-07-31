@@ -1,192 +1,109 @@
-# AI-Powered Automated Attendance System
-### Racial Fairness in Face Recognition — MSc Dissertation
-**University of Essex · MA981-7-FY · Data Science and Its Applications**
+# Face Recognition API
 
----
+A production-grade, **domain-agnostic** face recognition service built for
+**low-data enrolment** and **low-hardware deployment**.
 
-## Overview
-
-This repository contains the full research artefacts for an MSc dissertation investigating whether a locally-deployed face recognition attendance system can achieve **equitable recognition accuracy across seven racial demographic groups** through per-demographic threshold calibration and quality-weighted prototype aggregation.
-
-**Research question:**
-> *Can a locally-deployed face recognition attendance system achieve F1 ≥ 0.75 and an inter-group gap ≤ 15 pp across FairFace's seven demographic groups through leave-one-out threshold calibration?*
-
-**Key result:** Per-demographic LOO-CV calibration reduces the inter-group F1 gap from ~0.26 (global threshold) to ~0.07, with all seven groups exceeding F1 = 0.75.
-
----
-
-## Repository Structure
+Enrol a person from **as little as one photo**, then verify (1:1) or identify
+(1:N) from any client — web, mobile, desktop.
 
 ```
-.
-├── 01_notebook/                     # Evaluation notebook & figures
-│   ├── dissertation_evaluation.ipynb
-│   └── outputs/
-│       ├── fig1_demographics.png    # Student demographic distribution
-│       ├── fig2_quality.png         # Registration image quality distributions
-│       ├── fig3_similarity.png      # Pairwise cosine similarity matrix
-│       ├── fig4_fairness.png        # F1 before/after calibration, per group
-│       └── fig5_loo_sweep.png       # LOO-CV threshold curves per demographic
-│
-├── 02_dissertation/                 # LaTeX dissertation
-│   ├── main.tex                     # Full dissertation source (~2040 lines)
-│   └── main.pdf                     # Compiled PDF (~1.3 MB)
-│
-├── core/                            # Shared database & configuration layer
-│   ├── config.py                    # Pydantic settings (thresholds, paths)
-│   ├── database.py                  # Async SQLAlchemy session factory
-│   ├── models.py                    # ORM models (Student, Embedding, etc.)
-│   ├── math_utils.py                # Cosine similarity helpers
-│   ├── init_db.py                   # Database initialisation script
-│   └── schema.sql                   # Reference SQL schema
-│
-├── worker/                          # AI batch processing pipeline
-│   ├── model_adapter.py             # YuNet + ArcFace MobileNet wrapper
-│   ├── optimizer.py                 # LOO-CV calibration & quality scoring
-│   ├── runner.py                    # Async batch worker loop
-│   ├── registration_updater.py      # Prototype aggregation on registration
-│   └── download_models.py           # ONNX model download helper
-│
-├── firmware/
-│   └── esp32_cam/esp32_cam.ino      # ESP32-CAM Arduino firmware
-│
-├── migrations/
-│   └── 001_initial.sql              # Database migration
-│
-└── requirements.txt                 # Python dependencies
+YuNet detection (5-pt landmarks) → ArcFace 512-d embedding → multi-prototype cosine match
 ```
 
----
+## Measured performance
 
-## AI Pipeline
+LFW, 120 enrolled identities, fixed 5-photo test set per identity, 114 unknown probes:
 
-| Stage | Component | Detail |
-|-------|-----------|--------|
-| Detection | **YuNet** (`face_detection_yunet_2023mar.onnx`) | 5-point landmark, ~5 ms/frame CPU |
-| Alignment | Affine warp to 112×112 | 5 keypoints → canonical pose |
-| Embedding | **ArcFace MobileNet** (`w600k_mbf.onnx`) | 512-d L2-normalised, cosine similarity |
-| Quality score | `Q = 0.40·sharpness + 0.40·conf + 0.20·face_size` | Discard Q < 0.15 |
-| Prototype | Quality-weighted mean, L2-normalised | One vector per registered student |
-| Calibration | LOO-CV sweep τ ∈ [0.20, 0.60] step 0.005 | Maximise macro-F1 per demographic |
+| Enrolment photos | Top-1 accuracy | Open-set DIR @ FAR=1% |
+|---|---|---|
+| **1** | **97.5%** | 97.0% |
+| **2** | **98.5%** | 97.7% |
+| 5 | 98.5% | **98.2%** |
 
----
+~9.6 ms/image end-to-end on desktop CPU · 13.6 MB recognition model ·
+sub-10 ms matching at 200k enrolled prototypes.
 
-## Fairness Results
+See [`faceapi/benchmarks/results/FEWSHOT_REPORT.md`](faceapi/benchmarks/results/FEWSHOT_REPORT.md)
+and [`faceapi/MODEL_CARD.md`](faceapi/MODEL_CARD.md) for the full protocol,
+limitations and ethical guidance.
 
-| Demographic Group | Baseline F1 (τ = 0.35) | Calibrated F1 | Calibrated τ* |
-|-------------------|------------------------|---------------|---------------|
-| White | 0.870 | 0.880 | 0.375 |
-| Black | 0.610 | 0.820 | 0.285 |
-| Indian | 0.710 | 0.830 | 0.315 |
-| East Asian | 0.630 | 0.810 | 0.275 |
-| Southeast Asian | 0.680 | 0.840 | 0.305 |
-| Middle Eastern | 0.740 | 0.850 | 0.345 |
-| Latino / Hispanic | 0.760 | 0.860 | 0.360 |
-| **Inter-group gap** | **0.260** | **0.070** | — |
-
-*Illustrative results based on Grother et al. (2019) bias distributions; derived via `np.random.seed(42)` for reproducibility.*
-
----
-
-## Setup
-
-### Prerequisites
-
-- Python 3.10+
-- The two ONNX model files (not committed — large binaries):
-  - `work/models/face_detection_yunet_2023mar.onnx`
-  - `work/models/w600k_mbf.onnx`
-
-Download them automatically:
-
-```bash
-python worker/download_models.py
-```
-
-### Install dependencies
+## Quick start
 
 ```bash
 pip install -r requirements.txt
+python -m faceapi.download_models     # one-time (~14 MB)
+python -m faceapi.serve               # http://localhost:8080
 ```
 
-### Initialise the database
+| URL | What |
+|---|---|
+| **http://localhost:8080** | Product site — overview, benchmarks, code examples |
+| **/demo** | Live camera demo (enrol + identify in the browser) |
+| **/docs** | Interactive API reference (OpenAPI) |
 
 ```bash
-python -m core.init_db
+curl -F subject_id=alice -F name=Alice -F images=@a1.jpg -F images=@a2.jpg \
+     http://localhost:8080/enroll
+curl -F image=@query.jpg http://localhost:8080/identify
 ```
 
----
+## Built with it
 
-## Running the Evaluation Notebook
-
-Open `01_notebook/dissertation_evaluation.ipynb` in Jupyter Lab or VS Code.
-
-The notebook auto-detects whether it is being run from inside `01_notebook/` or from the project root and adjusts `sys.path` accordingly.
+The **Smart Attendance** system is a complete product running on this API — students
+enrol and check in by face, staff manage sessions and reports. It owns zero ML code;
+every face operation is an HTTP call to this service.
 
 ```bash
-# From project root
-jupyter lab 01_notebook/dissertation_evaluation.ipynb
+python -m attendance.serve     # http://localhost:8000
 ```
 
-The notebook covers six sections:
+## Project structure
 
-1. **Data Pipeline** — load students & embeddings from SQLite
-2. **Model Evaluation** — YuNet quality scoring, ArcFace embedding norms
-3. **Optimisation** — 3-stage LOO-CV calibration via `worker.optimizer`
-4. **Fairness Evaluation** — per-demographic F1, before/after calibration
-5. **LOO Threshold Curves** — global + per-group sweep plots
-6. **Summary Table** — PASS/FAIL verdict per group
+Backend and frontend are separated, and each backend is layered by responsibility.
 
-All five figures are saved to `01_notebook/outputs/` and referenced directly by the LaTeX dissertation via `\graphicspath{{../01_notebook/outputs/}}`.
+```
+faceapi/                     Recognition service (the product)
+├── engine.py                detect · align · embed        (no HTTP)
+├── store.py  matching.py    gallery persistence · scoring
+├── services.py              recognition operations
+├── deps.py  middleware.py   DI helpers · observability
+├── routers/                 HTTP surface
+│   ├── recognition.py       multipart endpoints
+│   ├── recognition_json.py  JSON/base64 endpoints (/v1)
+│   ├── subjects.py          gallery management
+│   └── system.py            health · models · metrics
+├── api.py                   app factory (wiring only)
+└── web/                     frontend
+    ├── index.html demo.html
+    ├── css/                 site.css · demo.css
+    └── js/                  site.js · demo.js
 
----
+attendance/                  Application built on the API
+├── db.py                    persistence
+├── auth.py                  JWT · Argon2 · role guards
+├── faceclient.py            HTTP client for faceapi
+├── schemas.py  deps.py      request models · DI helpers
+├── services/checkin.py      check-in business rules
+├── routers/                 auth · face · courses · sessions
+│                            attendance · reports · system
+├── app.py                   app factory (wiring only)
+└── web/                     PWA frontend
+    ├── index.html
+    ├── css/styles.css
+    └── js/
+        ├── main.js          shell · routing · boot
+        ├── api.js           HTTP client + token store
+        ├── ui.js            DOM helpers
+        ├── camera.js        capture modal
+        └── views/           student.js · staff.js · admin.js
+```
 
-## Compiling the Dissertation
+## Documentation
+- [`faceapi/README.md`](faceapi/README.md) — endpoints, configuration, cross-platform client snippets, Docker
+- [`faceapi/MODEL_CARD.md`](faceapi/MODEL_CARD.md) — intended use, measured metrics, limitations, bias & privacy
 
-Requires a LaTeX distribution (TeX Live, MiKTeX, or TinyTeX). Run three passes to stabilise cross-references:
-
+## Tests
 ```bash
-cd 02_dissertation
-pdflatex -interaction=nonstopmode main.tex
-pdflatex -interaction=nonstopmode main.tex
-pdflatex -interaction=nonstopmode main.tex
+python -m pytest faceapi/tests -q     # API coverage
+python -m faceapi.smoke               # end-to-end demo
 ```
-
-The compiled `main.pdf` is included in this repository.
-
----
-
-## ESP32-CAM Firmware
-
-The Arduino sketch at `firmware/esp32_cam/esp32_cam.ino` targets the AI-Thinker ESP32-CAM board. It:
-
-- Connects to university WiFi and syncs NTP time
-- Captures a JPEG frame every 5 seconds
-- POSTs the image to `/api/v1/ingest/image` with a device-key header
-- Displays status on a 128×64 OLED (SSD1306) and signals with green/red LEDs
-
-Flash using Arduino IDE 2 with the ESP32 board package installed.
-
----
-
-## References
-
-- Deng, J. et al. (2019). *ArcFace: Additive Angular Margin Loss for Deep Face Recognition.* CVPR.
-- Grother, P., Ngan, M., & Hanaoka, K. (2019). *NIST FRVT Part 3: Demographic Effects.* NIST IR 8280.
-- Kärkkäinen, K. & Joo, J. (2021). *FairFace: Face Attribute Dataset for Balanced Race, Gender, and Age.* WACV.
-- Wu, W., Peng, H., & Yu, S. (2023). *YuNet: A Tiny Millisecond-Level Face Detector.* MIR 20(5).
-
----
-
-## Submission Notes (FASER)
-
-Deadline: **21 August 2026, noon**
-
-| File | Description |
-|------|-------------|
-| `01_notebook/dissertation_evaluation.ipynb` | Executable evaluation notebook |
-| `01_notebook/outputs/*.png` | All five generated figures |
-| `02_dissertation/main.pdf` | Final dissertation PDF |
-| `work/attendance.db` | SQLite database (if ≤ 50 MB) |
-
-> **Data protection:** Face embeddings and registration images contain biometric data. The `work/` runtime directory (models, SQLite DB, registration photos) is excluded from this repository in compliance with GDPR Article 9 and the UK Data Protection Act 2018.
