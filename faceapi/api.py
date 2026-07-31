@@ -45,7 +45,7 @@ from faceapi.schemas import (BBox, Candidate, EmbedResponse, EnrollResponse,
                              VerifyResponse)
 from faceapi.store import SubjectStore
 
-_WEB = Path(__file__).resolve().parent / "web" / "index.html"
+_WEB = Path(__file__).resolve().parent / "web"
 
 # ── lightweight metrics ────────────────────────────────────────────────────────
 _METRICS = {"requests": defaultdict(int), "errors": defaultdict(int),
@@ -306,7 +306,31 @@ async def metrics():
 
 
 @app.get("/", include_in_schema=False)
-async def web_demo():
-    if _WEB.exists():
-        return FileResponse(_WEB, media_type="text/html")
+async def product_site():
+    """Marketing / product site for the API."""
+    page = _WEB / "index.html"
+    if page.exists():
+        return FileResponse(page, media_type="text/html")
     return JSONResponse({"service": "Face Recognition API", "docs": "/docs"})
+
+
+@app.get("/demo", include_in_schema=False)
+async def web_demo():
+    """Interactive camera demo (enrol + identify from the browser)."""
+    page = _WEB / "demo.html"
+    if page.exists():
+        return FileResponse(page, media_type="text/html")
+    raise HTTPException(404, "Demo page not found")
+
+
+@app.get("/site.css", include_in_schema=False)
+async def site_css():
+    return FileResponse(_WEB / "site.css", media_type="text/css")
+
+
+@app.get("/icon.svg", include_in_schema=False)
+async def site_icon():
+    icon = _WEB / "icon.svg"
+    if icon.exists():
+        return FileResponse(icon, media_type="image/svg+xml")
+    raise HTTPException(404, "icon not found")
