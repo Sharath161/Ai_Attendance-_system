@@ -7,7 +7,7 @@
 <meta name="description" content="Face recognition API that works from a single enrolment photo and runs on low-cost hardware. 97.5% top-1 accuracy, 13.6 MB model, ~10 ms per image.">
 <title>FaceAPI — face recognition that works on low data</title>
 <link rel="icon" href="/icon.svg">
-<link rel="stylesheet" href="/site.css">
+<link rel="stylesheet" href="/css/site.css">
 </head>
 <body>
 
@@ -251,19 +251,6 @@ python -m faceapi.serve</code></pre>
      your local regulations. See the model card for limitations and intended use.</p>
 </footer>
 
-<script>
-document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
-  document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
-  document.querySelectorAll('[data-pane]').forEach(p =>
-    p.classList.toggle('on', p.dataset.pane === b.dataset.tab));
-});
-// live service status in the footer
-fetch('/health').then(r => r.json()).then(h => {
-  const d = document.createElement('a');
-  d.className = 'status ok'; d.href = '/health';
-  d.textContent = `● service online · ${h.subjects} subjects enrolled`;
-  document.querySelector('.links').appendChild(d);
-}).catch(() => {});
-</script>
+<script src="/js/site.js"></script>
 </body>
 </html>
