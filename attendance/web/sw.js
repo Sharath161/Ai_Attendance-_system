@@ -1,6 +1,8 @@
 /* Offline shell for the Attendance PWA. API calls always go to the network. */
 const CACHE = 'attendance-v1';
-const SHELL = ['/', '/styles.css', '/app.js', '/manifest.json', '/icon.svg'];
+const SHELL = ['/', '/css/styles.css', '/js/main.js', '/js/api.js', '/js/ui.js',
+               '/js/camera.js', '/js/views/student.js', '/js/views/staff.js',
+               '/js/views/admin.js', '/manifest.json', '/icon.svg'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));

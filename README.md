@@ -57,6 +57,47 @@ every face operation is an HTTP call to this service.
 python -m attendance.serve     # http://localhost:8000
 ```
 
+## Project structure
+
+Backend and frontend are separated, and each backend is layered by responsibility.
+
+```
+faceapi/                     Recognition service (the product)
+├── engine.py                detect · align · embed        (no HTTP)
+├── store.py  matching.py    gallery persistence · scoring
+├── services.py              recognition operations
+├── deps.py  middleware.py   DI helpers · observability
+├── routers/                 HTTP surface
+│   ├── recognition.py       multipart endpoints
+│   ├── recognition_json.py  JSON/base64 endpoints (/v1)
+│   ├── subjects.py          gallery management
+│   └── system.py            health · models · metrics
+├── api.py                   app factory (wiring only)
+└── web/                     frontend
+    ├── index.html demo.html
+    ├── css/                 site.css · demo.css
+    └── js/                  site.js · demo.js
+
+attendance/                  Application built on the API
+├── db.py                    persistence
+├── auth.py                  JWT · Argon2 · role guards
+├── faceclient.py            HTTP client for faceapi
+├── schemas.py  deps.py      request models · DI helpers
+├── services/checkin.py      check-in business rules
+├── routers/                 auth · face · courses · sessions
+│                            attendance · reports · system
+├── app.py                   app factory (wiring only)
+└── web/                     PWA frontend
+    ├── index.html
+    ├── css/styles.css
+    └── js/
+        ├── main.js          shell · routing · boot
+        ├── api.js           HTTP client + token store
+        ├── ui.js            DOM helpers
+        ├── camera.js        capture modal
+        └── views/           student.js · staff.js · admin.js
+```
+
 ## Documentation
 - [`faceapi/README.md`](faceapi/README.md) — endpoints, configuration, cross-platform client snippets, Docker
 - [`faceapi/MODEL_CARD.md`](faceapi/MODEL_CARD.md) — intended use, measured metrics, limitations, bias & privacy
