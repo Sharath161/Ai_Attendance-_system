@@ -42,3 +42,12 @@ Desktop.ini
 .vscode/
 .idea/
 *.swp
+
+# ── LaTeX build artefacts ─────────────────────────────────────────────────────
+dissertation/*.aux
+dissertation/*.log
+dissertation/*.out
+dissertation/*.toc
+dissertation/*.lof
+dissertation/*.lot
+dissertation/*.synctex.gz
