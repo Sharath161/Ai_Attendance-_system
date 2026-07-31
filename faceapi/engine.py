@@ -29,10 +29,25 @@ def _l2(v: np.ndarray) -> np.ndarray:
 
 
 def _yunet_to_arcface_kps(face_row: np.ndarray) -> np.ndarray:
+    """Map YuNet's 5 landmarks to ArcFace's canonical order.
+
+    YuNet row layout: 0-3 bbox, then landmark pairs at
+        4,5   -> subject's right eye   (appears on the VIEWER-LEFT, smaller x)
+        6,7   -> subject's left eye    (viewer-right)
+        8,9   -> nose tip
+        10,11 -> right mouth corner    (viewer-left)
+        12,13 -> left mouth corner     (viewer-right)
+
+    ``_ARCFACE_DST`` is in the same viewer-space order (first point x=38.3 is on
+    the viewer-left, second x=73.5 on the viewer-right), so the landmarks map
+    straight through. Swapping the eye pair (as an earlier version did) asks
+    ``estimateAffinePartial2D`` for a reflection it cannot represent, producing a
+    badly distorted crop and collapsing embedding separation.
+    """
     return np.array(
-        [[face_row[6], face_row[7]], [face_row[4], face_row[5]],
-         [face_row[8], face_row[9]], [face_row[12], face_row[13]],
-         [face_row[10], face_row[11]]], dtype=np.float32)
+        [[face_row[4], face_row[5]], [face_row[6], face_row[7]],
+         [face_row[8], face_row[9]], [face_row[10], face_row[11]],
+         [face_row[12], face_row[13]]], dtype=np.float32)
 
 
 def _align(image: np.ndarray, kps: np.ndarray) -> np.ndarray:
@@ -43,7 +58,13 @@ def _align(image: np.ndarray, kps: np.ndarray) -> np.ndarray:
 
 
 def _preprocess(face_112: np.ndarray) -> np.ndarray:
-    face = (face_112.astype(np.float32) - 127.5) / 128.0
+    """BGR 112x112 crop -> ArcFace input [1,3,112,112].
+
+    InsightFace trains with RGB input (its own loader uses ``swapRB=True``), so
+    the BGR crop is converted before normalising to [-1, 1].
+    """
+    rgb = cv2.cvtColor(face_112, cv2.COLOR_BGR2RGB)
+    face = (rgb.astype(np.float32) - 127.5) / 127.5
     return face.transpose(2, 0, 1)[np.newaxis, :]
 
 
@@ -62,6 +83,7 @@ class FaceEngine:
         detection_score_threshold: float = 0.60,
         intra_op_threads: int = 0,
         enable_tta: bool = False,
+        detect_max_side: int = 0,   # >0: downscale for detection (low-hardware profile)
     ) -> None:
         detection_model = Path(detection_model)
         recognition_model = Path(recognition_model)
@@ -70,6 +92,7 @@ class FaceEngine:
                 raise FileNotFoundError(f"Missing {label} model: {p}")
 
         self.enable_tta = enable_tta
+        self.detect_max_side = detect_max_side
         self.recognition_model_name = recognition_model.name
 
         self._detector = cv2.FaceDetectorYN.create(
@@ -86,6 +109,30 @@ class FaceEngine:
         self._input = self._session.get_inputs()[0].name
 
     # ── low-level ────────────────────────────────────────────────────────────
+    def _detect_raw(self, image: np.ndarray, max_faces: int) -> list[np.ndarray]:
+        """Run YuNet, optionally on a downscaled copy (low-hardware profile).
+
+        Returns YuNet rows with coords mapped back to full-resolution space,
+        sorted by confidence (desc), truncated to max_faces.
+        """
+        h, w = image.shape[:2]
+        det_img, scale = image, 1.0
+        if self.detect_max_side and max(h, w) > self.detect_max_side:
+            scale = self.detect_max_side / max(h, w)
+            det_img = cv2.resize(image, (max(1, int(w * scale)), max(1, int(h * scale))))
+        dh, dw = det_img.shape[:2]
+        self._detector.setInputSize((dw, dh))
+        _, faces = self._detector.detect(det_img)
+        if faces is None or len(faces) == 0:
+            return []
+        rows = []
+        for f in sorted(faces, key=lambda f: -f[-1])[:max_faces]:
+            f = np.array(f, dtype=np.float32)
+            if scale != 1.0:
+                f[:14] /= scale          # bbox(4) + 5 landmarks(10) back to full-res
+            rows.append(f)
+        return rows
+
     def _embed_aligned(self, aligned: np.ndarray) -> np.ndarray:
         raw = self._session.run(None, {self._input: _preprocess(aligned)})[0][0]
         return _l2(np.asarray(raw, dtype=np.float32).flatten())
@@ -100,18 +147,34 @@ class FaceEngine:
 
     # ── public ───────────────────────────────────────────────────────────────
     def detect(self, image: np.ndarray, embed: bool = True, max_faces: int = 10) -> list[Detection]:
-        h, w = image.shape[:2]
-        self._detector.setInputSize((w, h))
-        _, faces = self._detector.detect(image)
-        if faces is None or len(faces) == 0:
-            return []
-        faces = sorted(faces, key=lambda f: -f[-1])[:max_faces]
         out = []
-        for f in faces:
+        for f in self._detect_raw(image, max_faces):
             bbox = {"x": int(f[0]), "y": int(f[1]), "w": int(f[2]), "h": int(f[3])}
             emb = self._embed_face(image, _yunet_to_arcface_kps(f)) if embed else None
             out.append(Detection(bbox=bbox, confidence=float(f[-1]), embedding=emb))
         return out
+
+    def align_crops(self, image: np.ndarray, max_faces: int = 10) -> list[dict]:
+        """Detected faces as canonical 112x112 aligned crops (no embedding)."""
+        out = []
+        for f in self._detect_raw(image, max_faces):
+            out.append({
+                "crop": _align(image, _yunet_to_arcface_kps(f)),
+                "bbox": {"x": int(f[0]), "y": int(f[1]), "w": int(f[2]), "h": int(f[3])},
+                "confidence": float(f[-1]),
+            })
+        return out
+
+    def embed_crops(self, crops: list[np.ndarray], batch: int = 16) -> np.ndarray:
+        """Batched embedding of aligned 112x112 crops -> [N,512] unit vectors."""
+        if not crops:
+            return np.zeros((0, 512), dtype=np.float32)
+        X = np.concatenate([_preprocess(c) for c in crops], axis=0)
+        outs = []
+        for i in range(0, len(X), batch):
+            outs.append(self._session.run(None, {self._input: X[i:i + batch]})[0])
+        E = np.concatenate(outs, axis=0).astype(np.float32)
+        return E / (np.linalg.norm(E, axis=1, keepdims=True) + 1e-9)
 
     def embed_primary(self, image: np.ndarray) -> Detection | None:
         """Embed the single most-confident face, or None (and face_count via .detect)."""

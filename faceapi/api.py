@@ -58,7 +58,8 @@ async def lifespan(app: FastAPI):
     app.state.engine = FaceEngine(
         detection_model=s.detection_model_path, recognition_model=s.recognition_model(),
         detection_score_threshold=s.detection_score_threshold,
-        intra_op_threads=s.intra_op_threads, enable_tta=s.enable_tta)
+        intra_op_threads=s.intra_op_threads, enable_tta=s.enable_tta,
+        detect_max_side=s.detect_max_side)
     app.state.store = SubjectStore(s.db_path)
     yield
     try:
@@ -173,13 +174,18 @@ def _do_verify(subject_id, frame, settings) -> VerifyResponse:
 
 
 def _do_enroll(subject_id, name, meta, frames, settings) -> EnrollResponse:
+    from faceapi.fewshot import amplified_embeddings
     vectors, rejected = [], 0
     for frame in frames:
-        dets = engine().detect(frame, embed=True, max_faces=settings.max_faces)
-        if len(dets) == 1 and dets[0].embedding is not None:
-            vectors.append(dets[0].embedding)
-        else:
+        crops = engine().align_crops(frame, max_faces=settings.max_faces)
+        if len(crops) != 1:
             rejected += 1
+            continue
+        if settings.enroll_amplify:
+            # few-shot amplifier: 1 photo -> ~6 augmented prototype embeddings
+            vectors.extend(amplified_embeddings(engine(), crops[0]["crop"], settings.embed_batch))
+        else:
+            vectors.append(engine().embed_crops([crops[0]["crop"]])[0])
     if not vectors:
         raise HTTPException(422, "No usable single-face images (each photo needs exactly one face)")
     store().upsert_subject(subject_id, name, meta)
