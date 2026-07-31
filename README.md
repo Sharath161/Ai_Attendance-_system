@@ -35,13 +35,26 @@ python -m faceapi.download_models     # one-time (~14 MB)
 python -m faceapi.serve               # http://localhost:8080
 ```
 
-Open **http://localhost:8080** for the live camera demo, or **/docs** for the
-interactive API reference.
+| URL | What |
+|---|---|
+| **http://localhost:8080** | Product site — overview, benchmarks, code examples |
+| **/demo** | Live camera demo (enrol + identify in the browser) |
+| **/docs** | Interactive API reference (OpenAPI) |
 
 ```bash
 curl -F subject_id=alice -F name=Alice -F images=@a1.jpg -F images=@a2.jpg \
      http://localhost:8080/enroll
 curl -F image=@query.jpg http://localhost:8080/identify
+```
+
+## Built with it
+
+The **Smart Attendance** system is a complete product running on this API — students
+enrol and check in by face, staff manage sessions and reports. It owns zero ML code;
+every face operation is an HTTP call to this service.
+
+```bash
+python -m attendance.serve     # http://localhost:8000
 ```
 
 ## Documentation
