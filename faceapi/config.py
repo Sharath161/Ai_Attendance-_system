@@ -27,6 +27,17 @@ class Settings(BaseSettings):
     detection_score_threshold: float = 0.60
     enable_tta: bool = False             # flip TTA — +accuracy, 2x embed cost
 
+    # ── few-shot / low-hardware profile knobs ─────────────────────────────────
+    # Downscale images to this max side for DETECTION only (0 = off). 320 is the
+    # edge profile: big speed win on the dominant pipeline stage, minimal loss
+    # for near-camera faces; landmarks are mapped back to full resolution.
+    detect_max_side: int = 0
+    # Enrolment amplification: expand each enrol photo into ~6 augmented
+    # embeddings (flip/rotation/brightness). The few-shot multiplier — biggest
+    # win when subjects enrol with only 1-3 photos.
+    enroll_amplify: bool = True
+    embed_batch: int = 16
+
     # ── matching ──────────────────────────────────────────────────────────────
     # Calibrated cosine threshold (set from faceapi.calibrate on your domain).
     match_threshold: float = 0.42

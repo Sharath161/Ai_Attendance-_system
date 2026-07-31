@@ -49,7 +49,8 @@ def test_enroll_and_identify(client, data):
         files = [("images", (f"e{i}.jpg", io.BytesIO(_jpg(data.images[data.target == pid][i])), "image/jpeg"))
                  for i in range(5)]
         r = client.post("/enroll", data={"subject_id": f"S{pid}", "name": f"P{pid}"}, files=files)
-        assert r.status_code == 200 and r.json()["embeddings_added"] == 5
+        # with enrolment amplification (default on) each photo yields ~6 embeddings
+        assert r.status_code == 200 and r.json()["embeddings_added"] >= 5
 
     # held-out image of person 5 should identify as S5
     q = {"image": ("q.jpg", io.BytesIO(_jpg(data.images[data.target == 5][8])), "image/jpeg")}

@@ -9,33 +9,51 @@
 
 ## 1. Automated unit / fairness suite (`tests/`)
 
+> **UPDATE — 2026-07-31: the earlier failure was a real bug, now fixed.**
+> An earlier version of this report described `test_zero_cross_person_matches`
+> (17.5% cross-person false-positive rate) as an intentional demonstration of the
+> thesis. That conclusion was **wrong**. Root cause below; the suite now passes.
+
 | Test | Result | Notes |
 |---|---|---|
-| `TestOlivettiOverall::test_overall_f1` | ✅ PASS | End-to-end pipeline F1 on the Olivetti benchmark meets the minimum accuracy gate. |
-| `TestOlivettiOverall::test_zero_cross_person_matches` | ❌ FAIL | Cross-person false-positive rate = **17.5%** at the global threshold (gate ≤ 5%). |
+| `TestOlivettiOverall::test_overall_f1` | ✅ PASS | End-to-end pipeline F1 meets the minimum accuracy gate. |
+| `TestOlivettiOverall::test_zero_cross_person_matches` | ✅ PASS | Cross-person false-positive gate (≤ 5%) — **was 17.5%, fixed**. |
 | `TestFairFaceEquity::test_per_race_detection_rate` | ⏭ SKIP | Requires the 5 GB FairFace dataset (`work/fairface`), not bundled. |
 | `TestFairFaceEquity::test_per_race_f1` | ⏭ SKIP | Requires FairFace dataset. |
 | `TestFairFaceEquity::test_f1_fairness_gap` | ⏭ SKIP | Requires FairFace dataset. |
 
-**Summary:** `1 failed, 1 passed, 3 skipped` in ~10 s.
+**Summary:** `2 passed, 3 skipped` in ~16 s.
 
-### Why the FAIL is a genuine, expected result (not a defect to hide)
+### Root cause of the former failure
 
-`test_zero_cross_person_matches` runs on the **Olivetti** faces dataset —
-grayscale 64×64 images upscaled to the pipeline input. It is deliberately a hard
-false-positive gate. The observed 17.5% cross-person false-positive rate at the
-single global cosine threshold (0.35) is exactly the phenomenon the dissertation
-investigates: **a single global threshold is unsafe**, and it is worse on
-harder / out-of-distribution image domains. This mirrors the NIST FRVT finding
-(Grother et al., 2019) that false-match behaviour varies sharply by input
-population, motivating the per-demographic threshold calibration that is the
-project's core contribution. The failing assertion is therefore reported
-faithfully rather than relaxed to make the suite green.
+Two defects in the face-alignment / preprocessing path
+(`worker/model_adapter.py`, mirrored in `faceapi/engine.py`):
 
-The EDA (see `EDA_REPORT.md`, Figure 5) independently confirms the mechanism:
-on the grayscale Olivetti domain the genuine and impostor cosine-similarity
-distributions nearly overlap (μ 0.72 vs 0.78), so no fixed threshold cleanly
-separates them.
+1. **Swapped eye landmarks.** `_yunet_to_arcface_kps` mapped YuNet's eye pair to
+   ArcFace's template in reverse order. Because `cv2.estimateAffinePartial2D`
+   models only similarity transforms (rotation, scale, translation — **no
+   reflection**), that mismatch cannot be satisfied and yields a badly distorted
+   112×112 crop. Every face was warped toward a similar distortion, collapsing
+   inter-person separation.
+2. **Wrong colour order.** ArcFace (InsightFace) is trained on RGB — its own
+   loader sets `swapRB=True` — but the BGR crop was passed through unchanged.
+
+**Measured effect** (LFW, 6 identities, real colour faces):
+
+| Pipeline | Genuine μ | Impostor μ | Separation |
+|---|---|---|---|
+| Before (both defects) | 0.516 | 0.453 | 0.063 |
+| + landmark order fixed | 0.615 | 0.022 | 0.593 |
+| + RGB colour order fixed | **0.637** | **0.012** | **0.625** |
+
+Mean impostor similarity fell from **0.45 to 0.012** — a ~10× improvement in
+genuine/impostor separation, and the reason the false-positive gate now passes.
+
+**Consequence for earlier results.** Any accuracy, threshold-calibration, or
+fairness figure produced before this fix was measured on the broken pipeline and
+must be re-derived. In particular, the earlier conclusion that "the global 0.35
+threshold is hopelessly miscalibrated" was an artefact of the distorted
+alignment, not a property of the model.
 
 The three FairFace tests **skip automatically** when the dataset is absent — an
 intentional design so the suite runs anywhere without a 5 GB download.
