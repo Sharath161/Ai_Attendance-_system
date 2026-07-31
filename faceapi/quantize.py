@@ -22,7 +22,7 @@ from faceapi.engine import FaceEngine, _preprocess, _align, _yunet_to_arcface_kp
 
 def _sample_inputs(engine: FaceEngine, n: int = 40) -> np.ndarray:
     from sklearn.datasets import fetch_olivetti_faces
-    from tests.stress.image_seed import face_to_frame
+    from faceapi._testutil import face_to_frame
     data = fetch_olivetti_faces(shuffle=False)
     xs = []
     pid = 0

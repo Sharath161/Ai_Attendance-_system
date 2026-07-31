@@ -24,7 +24,7 @@ from fastapi.testclient import TestClient
 from sklearn.datasets import fetch_olivetti_faces
 
 from faceapi.api import app
-from tests.stress.image_seed import face_to_frame, to_jpeg_bytes, augment_params
+from faceapi._testutil import face_to_frame, to_jpeg_bytes, augment_params
 
 
 def jpg(face, pid, idx):

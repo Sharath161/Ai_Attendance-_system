@@ -32,7 +32,7 @@ from faceapi.config import get_settings
 from faceapi.engine import FaceEngine, _l2
 from faceapi.fewshot import augment_bank
 
-OUT = Path("analysis/output"); OUT.mkdir(parents=True, exist_ok=True)
+OUT = Path("faceapi/benchmarks/results"); OUT.mkdir(parents=True, exist_ok=True)
 plt.rcParams.update({"figure.dpi": 120, "axes.spines.top": False, "axes.spines.right": False})
 
 KS = [1, 2, 3, 5]
