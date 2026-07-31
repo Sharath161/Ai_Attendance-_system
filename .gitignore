@@ -18,8 +18,12 @@ work/models/
 # ── Biometric data — NEVER commit ─────────────────────────────────────────────
 # subject gallery (face embedding templates) and any local test photos
 work/faceapi.db
+work/attendance.db
 work/faceapi.db-shm
 work/faceapi.db-wal
+work/attendance.db-shm
+work/attendance.db-wal
+work/logs/
 work/photos/
 work/my_people/
 

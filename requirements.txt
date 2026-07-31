@@ -9,3 +9,9 @@ onnxruntime>=1.17.0
 # INT8 quantization (optional, for faceapi.quantize)
 onnx>=1.16.0
 requests>=2.32.0   # model download
+
+# ── Attendance system ─────────────────────────────────────────────────────────
+PyJWT>=2.8.0
+argon2-cffi>=23.1.0
+httpx>=0.27.0
+email-validator>=2.0.0
