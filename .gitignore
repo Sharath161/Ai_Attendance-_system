@@ -51,3 +51,24 @@ dissertation/*.toc
 dissertation/*.lof
 dissertation/*.lot
 dissertation/*.synctex.gz
+
+# ── Retained from the prototype backend ───────────────────────────────────────
+work/
+*.db
+*.pyc
+*.pyo
+*.pyd
+02_dissertation/*.aux
+02_dissertation/*.log
+02_dissertation/*.toc
+02_dissertation/*.lof
+02_dissertation/*.lot
+02_dissertation/*.out
+02_dissertation/*.synctex.gz
+02_dissertation/diagrams.aux
+02_dissertation/diagrams.log
+.ipynb_checkpoints/
+01_notebook/.ipynb_checkpoints/
+03_ui/
+api/
+*.override.yml
