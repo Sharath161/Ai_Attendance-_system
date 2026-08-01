@@ -107,3 +107,17 @@ attendance/                  Application built on the API
 python -m pytest faceapi/tests -q     # API coverage
 python -m faceapi.smoke               # end-to-end demo
 ```
+
+## Repository layout
+
+```
+faceapi/        Face Recognition API — the product (service + website + benchmarks)
+attendance/     Attendance system built on the API (backend + PWA)
+dissertation/   MSc dissertation (LaTeX source, PDF and figures)
+work/models/    ONNX model weights (git-ignored; fetch with faceapi.download_models)
+```
+
+The original prototype backend (`core/`, `worker/`, `01_notebook/`,
+`02_dissertation/`, `firmware/`, `migrations/`) was superseded by `faceapi/` +
+`attendance/` and removed; it remains available in git history before the
+"Remove superseded prototype" commit.
