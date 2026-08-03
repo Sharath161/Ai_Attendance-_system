@@ -23,7 +23,12 @@ export async function api(path, { method = 'GET', body, formData } = {}) {
     body: formData ? body : (body ? JSON.stringify(body) : undefined),
   });
 
-  if (res.status === 401) { onUnauthorized(); throw new Error('Session expired'); }
+  // A 401 from the login endpoint means bad credentials — surface the server's
+  // message. A 401 anywhere else means the token is no longer valid.
+  if (res.status === 401 && !path.startsWith('/auth/login')) {
+    onUnauthorized();
+    throw new Error('Session expired');
+  }
 
   const isJson = (res.headers.get('content-type') || '').includes('json');
   const data = isJson ? await res.json() : await res.text();
