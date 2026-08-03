@@ -72,3 +72,8 @@ work/
 03_ui/
 api/
 *.override.yml
+
+# ── Academic documents — LOCAL ONLY, never publish to this repo ───────────────
+dissertation/
+*.docx
+*.pdf
